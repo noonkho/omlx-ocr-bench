@@ -25,7 +25,7 @@ import config
 import ocr
 import score
 from ocr import (BLANK_INK, COLOURS, JUNK, build_body, data_url, http_detail, ink,
-                 parse, render_pages, request)
+                 parse, render_pages, request, split_blocks, stitch)
 
 HERE = Path(__file__).parent
 JOBS: dict[str, dict] = {}
@@ -48,9 +48,9 @@ KNOBS: dict[str, type] = {
     "max_tokens": int, "top_k": int, "seed": int, "no_repeat_ngram_size": int,
 }
 
-#: What the page starts with, and what `ocr_page` uses, from one place.
-DEFAULT_KNOBS = {"max_tokens": 4096, "temperature": 0,
-                 "frequency_penalty": config.FREQUENCY_PENALTY}
+#: What the page starts with, and what `ocr.ocr_page` uses — defined there, so the bench and the
+#: one-shot CLI cannot drift apart.
+DEFAULT_KNOBS = ocr.DEFAULT_KNOBS
 
 #: How often a streaming answer is pushed to the browser. One frame per token would cost a JSON
 #: encode, an HTTP chunk and a flush each; at 60 ms the answer still appears to stream.
@@ -249,10 +249,11 @@ class Handler(BaseHTTPRequestHandler):
         pages = [{"index": i, "w": size[0], "h": size[1], "url": data_url(png),
                   "blank": ink(png) < BLANK_INK}
                  for i, (png, size) in enumerate(rendered)]
+        raw_pages = [png for png, _ in rendered]        # kept for the stitched mode
         job = uuid.uuid4().hex
         truth = answer_key(name)
-        JOBS[job] = {"name": name, "pages": pages, "dpi": dpi, "at": time.time(),
-                     "truth": truth}
+        JOBS[job] = {"name": name, "pages": pages, "png": raw_pages, "dpi": dpi,
+                     "at": time.time(), "truth": truth}
         self._json(200, {"ok": True, "job": job, "name": name, "dpi": dpi, "pages": pages,
                          "scored": bool(truth)})
 
@@ -277,7 +278,7 @@ class Handler(BaseHTTPRequestHandler):
         base = one("base_url", config.BASE_URL)
         key = one("api_key", config.API_KEY)
         guard = str(one("guard", "1")) == "1"
-        whole = str(one("mode", "page")) == "whole"
+        mode = str(one("mode", "page"))
 
         knobs = dict(DEFAULT_KNOBS)
         for name, cast in KNOBS.items():
@@ -306,16 +307,43 @@ class Handler(BaseHTTPRequestHandler):
         blanks = [p["blank"] for p in meta["pages"]]
         urls = [p["url"] for p in meta["pages"]]
         # A blank page is skipped, not sent: with nothing to read this model counts instead, and
-        # pays the whole token cap for it. In whole-document mode the blanks simply do not go.
-        groups = [[u for u, b in zip(urls, blanks) if not b]] if whole else \
-                 [[] if b else [u] for u, b in zip(urls, blanks)]
-        self.scores = []
+        # pays the whole token cap for it.
+        keep = [i for i, blank in enumerate(blanks) if not blank]
+        if not keep:
+            # Every page was blank. Nothing to send, and the one-request modes have no page to
+            # hang the request on — say so rather than building an empty image.
+            emit("start", {"pages": len(urls), "requests": 0, "blank": len(urls),
+                           "stitched": False, "model": model, "prompt": prompt,
+                           "mode": mode, "knobs": knobs})
+            for i in range(len(urls)):
+                emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
+                              "finish": "blank", "runaway": False, "raw": "", "usage": {},
+                              "images": 0, "blocks": []})
+            emit("done", {"seconds": 0, "score": None, "model": model})
+            return
+        if mode == "stitch":
+            # Every page as ONE tall image. oMLX drops every image after the first, so the way
+            # to send a whole document in one request is to send one image. Measured to work.
+            tall, heights = stitch([meta["png"][i] for i in keep])
+            groups, stitched = [[data_url(tall)]], (keep, heights)
+        elif mode == "whole":
+            groups, stitched = [[urls[i] for i in keep]], None
+        else:
+            groups, stitched = [[] if blank else [u] for u, blank in zip(urls, blanks)], None
+        scores: list[dict] = []
         emit("start", {"pages": len(urls), "requests": sum(1 for g in groups if g),
                        "scored": bool(meta.get("truth")),
                        "blank": sum(blanks), "model": model,
-                       "prompt": prompt, "mode": "whole" if whole else "page", "knobs": knobs})
+                       "prompt": prompt, "mode": mode, "knobs": knobs})
 
         run_t0 = time.time()
+        if mode != "page":
+            # The one-request modes have no slot for a skipped page, so say so up front.
+            for i, blank in enumerate(blanks):
+                if blank and not emit("page", {
+                        "index": i, "blank": True, "seconds": 0, "error": "", "finish": "blank",
+                        "runaway": False, "raw": "", "usage": {}, "images": 0, "blocks": []}):
+                    return
         for i, group in enumerate(groups):
             if not group:
                 if not emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
@@ -326,17 +354,15 @@ class Handler(BaseHTTPRequestHandler):
             if not emit("page_start", {"index": i, "images": len(group)}):
                 return
             if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard,
-                                meta.get("truth") or []):
+                                meta.get("truth") or [], scores, stitched):
                 return
         emit("done", {"seconds": round(time.time() - run_t0, 2),
-                      "score": score.combine(self.scores) if self.scores else None,
+                      "score": score.combine(scores) if scores else None,
                       "model": model})
 
-    #: One entry per finished unit, so the run can report a score for the whole document.
-    scores: list[dict] = []
-
     def run_one(self, index: int, images: list[str], emit, base: str, key: str, model: str,
-                prompt: str, knobs: dict, guard: bool, truth: list[list[dict]]) -> bool:
+                prompt: str, knobs: dict, guard: bool, truth: list[list[dict]],
+                scores: list[dict], stitched=None) -> bool:
         """One request, streamed. Returns False if the browser has gone and the run should stop."""
         watch = RepeatWatch()
         pulse = {"at": 0.0, "chars": 0, "closed": False}
@@ -381,13 +407,36 @@ class Handler(BaseHTTPRequestHandler):
             # and flagged: the guard exists to save tokens, not to hide the page from the user.
             finish = finish or "aborted_runaway"
         blocks = parse(text) if text else []
+        took = round(time.time() - t0, 2)
+
+        if stitched:
+            # One request covered the whole document. Put each block back on the page it was
+            # drawn on, and report one result per page, so everything downstream is unchanged.
+            keep, heights = stitched
+            per_page = split_blocks(blocks, heights)
+            for slot, page_blocks in zip(keep, per_page):
+                page_truth = truth[slot] if slot < len(truth) else []
+                marks = score.score_page(page_blocks, page_truth) if page_truth else None
+                if marks:
+                    scores.append(marks)
+                if not emit("page", {
+                        "score": marks, "index": slot,
+                        "seconds": took if slot == keep[0] else 0,
+                        "error": err, "finish": finish, "runaway": runaway,
+                        "raw": text if slot == keep[0] else "",
+                        "usage": usage if slot == keep[0] else {},
+                        "images": len(images), "stitched": True,
+                        "blocks": as_json(page_blocks)}):
+                    return False
+            return True
+
         page_truth = truth[index] if index < len(truth) else []
-        marks = score.score_page(as_json(blocks), page_truth) if page_truth else None
+        marks = score.score_page(blocks, page_truth) if page_truth else None
         if marks:
-            self.scores.append(marks)
+            scores.append(marks)
         return emit("page", {
             "score": marks,
-            "index": index, "seconds": round(time.time() - t0, 2), "error": err, "finish": finish,
+            "index": index, "seconds": took, "error": err, "finish": finish,
             "runaway": runaway, "raw": text, "usage": usage, "images": len(images),
             "blocks": as_json(blocks)})
 

@@ -116,19 +116,19 @@ One request per page, 150 dpi, `frequency_penalty: 0.8`, prompt `Multi page pars
 
 | sample | text | position | lines | graphics | invented | time |
 |---|---|---|---|---|---|---|
-| `gov_permit.pdf` | 87.4% | 100% | 50/63 | 5/5 | 0 | 4.8 s |
-| `scan_permit.png` | 83.5% | 100% | 50/63 | 5/5 | 0 | 9.6 s |
-| `notice_zh.pdf` | 86.3% | 100% | 18/23 | 2/2 | 0 | 1.9 s |
+| `gov_permit.pdf` | 88.7% | 100% | 50/63 | 5/5 | 0 | 5.3 s |
 | `scan_notice_zh.png` | 86.6% | 100% | 18/23 | 2/2 | 0 | 1.9 s |
-| `legal_deed.pdf` | 73.6% | 100% | 42/66 | 5/5 | 1 | 21.3 s |
-| `school_transcript.pdf` | 72.9% | 100% | 53/62 | 4/4 | 0 | 4.5 s |
-| `commercial_invoice.pdf` | 60.5% | 84.2% | 36/54 | 1/5 | 0 | 9.8 s |
+| `notice_zh.pdf` | 86.3% | 100% | 18/23 | 2/2 | 0 | 1.9 s |
+| `scan_permit.png` | 84.8% | 100% | 50/63 | 5/5 | 0 | 9.5 s |
+| `legal_deed.pdf` | 74.2% | 100% | 42/66 | 5/5 | 1 | 21.5 s |
+| `school_transcript.pdf` | 72.7% | 100% | 53/62 | 4/4 | 0 | 4.4 s |
+| `commercial_invoice.pdf` | 61.6% | 84.2% | 36/54 | 1/5 | 0 | 10.0 s |
 
 Two things stand out. **Position is near perfect while text is not** — when this model reads a
 line, it knows where the line was. And **the phone-photo versions cost it almost nothing**
-(87.4 → 83.5, 86.3 → 86.6), which is not what most OCR does under bad lighting.
+(88.7 → 84.8, 86.3 → 86.6), which is not what most OCR does under bad lighting.
 
-The invoice is its worst page: 60.5% text and **one graphic marked out of five** — it missed the
+The invoice is its worst page: 61.6% text and **one graphic marked out of five** — it missed the
 logo, the barcode and both signatures.
 
 ## Models worth trying next
@@ -219,8 +219,33 @@ The cause is named in the PR that added the model
 ([#2328](https://github.com/jundot/omlx/pull/2328)): it "reproduces the single-`<image>` multi-page
 prompt semantics", i.e. one placeholder however many images arrive. That also explains §6.
 
-The bench keeps the mode (**Run → Requests → whole document in one**) so the bug is one click to
+The bench keeps that mode (**Run → Requests → all pages, many images**) so the bug is one click to
 reproduce, and so it starts working the day oMLX fixes it.
+
+### 5b. Stitching the pages into one tall image gets round it — unreliably
+
+If oMLX only passes the first image, send one image: every page joined top to bottom. The bench
+does this under **Requests → all pages, one tall image**, and puts each block back on the page it
+was drawn on afterwards, so the overlay and the score still work per page.
+
+It demonstrably reads the whole document — `prompt_tokens` went from 909 for one page to 1539 for
+two, and text from both pages came back. The first run of the three-page deed took **6.1 s against
+21.1 s** page-by-page and scored *higher* on text (79.6% vs 74.2%).
+
+**And then it would not do it again.** Repeating the same request at `temperature: 0`:
+
+| run | result |
+|---|---|
+| deed, 3 pages, first attempt | 6.1 s, text 79.6%, no loop |
+| deed, 3 pages, ×3 after that | ~10 s, text 45%, **all three pages flagged as loops** |
+| deed, pages 1+2 only, earlier | 5.6 s, clean, both pages read |
+| deed, pages 1+2 only, later | 33.8 s, 23 distinct lines out of 237 — a loop |
+
+Raising `max_tokens` to 12288 did not help. Same server, same model, same bytes, different answer.
+So the honest summary is: **stitching is the only way to send a whole document to this model today,
+it is several times faster when it lands, and it cannot be relied on.** It ships switched off, with
+the runaway guard watching it. It may well behave better on a model that is not this one — which is
+the reason the bench now takes any model.
 
 ### 6. The documented prompt returns HTTP 500
 

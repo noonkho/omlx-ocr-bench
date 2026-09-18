@@ -270,7 +270,8 @@ pre.out .det{color:var(--muted);opacity:.75}
           <div><label class="lbl" for="mode">Requests</label>
             <select id="mode">
               <option value="page">one per page</option>
-              <option value="whole">whole document in one</option>
+              <option value="stitch">all pages, one tall image</option>
+              <option value="whole">all pages, many images</option>
             </select></div>
         </div>
         <p class="hint">150 dpi is enough for typed English. Traditional Chinese reads better at
@@ -296,11 +297,14 @@ pre.out .det{color:var(--muted);opacity:.75}
         <span class="try">Never start it with <code>&lt;image&gt;</code> — oMLX adds its own, and
           two placeholders for one image returns HTTP 500.</span></p>
 
-      <h3>Requests: per page / whole document</h3>
-      <p>Whether each page gets its own request, or all pages go in one. One request for the
-        whole document is what these models are built for and it is far faster — when it works.
-        <span class="try">On oMLX today only the first image reaches the model, so the rest of
-          the document is silently ignored. Leave this on "one per page".</span></p>
+      <h3>Requests</h3>
+      <p><b>One per page</b> is the safe default. <b>All pages, one tall image</b> joins the pages
+        and sends that as a single picture; the bench puts each answer back on the page it came
+        from. <b>All pages, many images</b> is what the model card describes and what oMLX cannot
+        do yet.
+        <span class="try">The many-images mode silently reads only page one. The tall-image mode
+          really does read them all — but on this model it is unstable: the same request can come
+          back clean or stuck in a loop. Treat it as an experiment.</span></p>
 
       <h3><code>temperature</code></h3>
       <p>How much randomness. 0 means "always the most likely next token", which is what you want
@@ -500,12 +504,19 @@ function modelNote(){
   if (link) link.onclick = e => { e.preventDefault(); $("#prompt").value = want; modelNote(); };
 }
 function modeNote(){
-  $("#modehint").innerHTML = $("#mode").value === "whole"
-    ? `<b style="color:var(--warn)">Known broken on oMLX today.</b> All pages go in one request,
-       which is what this model is built for — but oMLX passes only the FIRST image to the model
-       and drops the rest silently. Kept here so you can reproduce it: watch
-       <code>prompt_tokens</code> stay the same however many pages you send.`
-    : "";
+  const mode = $("#mode").value;
+  $("#modehint").innerHTML =
+    mode === "whole"
+      ? `<b style="color:var(--warn)">Known broken on oMLX today.</b> Every page goes in one
+         request as a separate image — and oMLX passes only the FIRST one to the model, dropping
+         the rest silently. Kept so you can reproduce it: watch <code>prompt_tokens</code> stay
+         the same however many pages you send.`
+    : mode === "stitch"
+      ? `<b>Experimental.</b> Every page joined top to bottom into <b>one tall image</b>, so there
+         is nothing for the server to drop. When it works it is several times faster than a page
+         at a time — but on this model it often falls into a repeat loop instead, and repeating
+         the same request does not give the same answer twice. Watch the runaway flag.`
+      : "";
 }
 
 // ---------------------------------------------------------------- upload
@@ -571,8 +582,8 @@ document.querySelectorAll("[data-p]").forEach(b =>
 $("#run").onclick = () => {
   if (!JOB) return;
   if (ES) ES.close();
-  WHOLE = $("#mode").value === "whole";
-  const units = WHOLE ? 1 : PAGES.length;
+  WHOLE = $("#mode").value === "whole";       // one answer for the lot, with no way to split it
+  const units = WHOLE ? 1 : PAGES.length;     // "stitch" reports per page, like the normal mode
   reset(); RESULTS = new Array(units).fill(null);
   $("#run").disabled = true; $("#prog").style.transform = "scaleX(0)";
   $("#runstate").className = "state"; $("#runstate").textContent = "starting…";
@@ -599,7 +610,7 @@ async function start(settings, units){
   ES.addEventListener("page_start", e => {
     const d = JSON.parse(e.data);
     LIVE[d.index] = {raw:"", blocks:[]};
-    $("#runstate").textContent = WHOLE
+    $("#runstate").textContent = d.images > 1 || WHOLE
       ? `one request, ${d.images} image(s)…` : `page ${d.index+1} of ${units}…`;
     draw();
   });
@@ -774,7 +785,7 @@ function md(src){
 function boxes(i, blocks){
   const pg = PAGES[WHOLE ? 0 : i];
   if (!pg) return "";
-  const rects = (blocks || []).map((b, j) => {
+  const rects = (blocks || []).filter(b => b.boxed !== false).map((b, j) => {
     const [x0,y0,x1,y1] = b.box, c = COLOURS[b.label] || "#888";
     return `<div class="box" data-p="${i}" data-i="${j}" title="${esc(b.label)}"
       style="left:${x0/10}%;top:${y0/10}%;width:${(x1-x0)/10}%;height:${(y1-y0)/10}%;
@@ -817,10 +828,10 @@ function board(sc, seconds, pages, tokens){
   if (!SCORED && !seconds){ el.hidden = true; return; }
   el.hidden = false;
   const pct = v => v === null || v === undefined ? "n/a" : (v * 100).toFixed(1) + "%";
-  meter($("#mtext"), sc && sc.text);
-  meter($("#mpos"), sc && sc.position);
-  $("#vtext").textContent = pct(sc && sc.text);
-  $("#vpos").textContent = pct(sc && sc.position);
+  meter($("#mtext"), sc ? sc.text : null);
+  meter($("#mpos"), sc ? sc.position : null);
+  $("#vtext").textContent = pct(sc ? sc.text : null);
+  $("#vpos").textContent = pct(sc ? sc.position : null);
   $("#boardwhy").innerHTML = SCORED
     ? `<b>${esc($("#model").value)}</b> against this sample's answer key.`
     : `<b>${esc($("#model").value)}</b> — speed only. Load a drawn sample to score accuracy.`;

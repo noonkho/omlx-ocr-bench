@@ -20,10 +20,12 @@ import html
 import re
 from difflib import SequenceMatcher
 
-from ocr import JUNK
+from ocr import JUNK, Block
 
 #: Truth entries that are graphics, not words. A model is judged on marking them, not reading them.
 GRAPHIC = {"image", "seal", "signature"}
+#: …plus the whole-table entry, whose text is already counted cell by cell.
+SKIP = GRAPHIC | {"table"}
 
 #: Below this a line is "not found at all" rather than "found and misread".
 FOUND = 0.80
@@ -39,18 +41,15 @@ def norm(s: str) -> str:
     return _SPACE.sub(" ", html.unescape(_TAGS.sub(" ", s or ""))).strip()
 
 
-def lines_of(blocks) -> list[tuple[str, list[int]]]:
+def lines_of(blocks: list[Block]) -> list[tuple[str, list[int] | None]]:
     """Every line a model returned, with the box of the block that carried it."""
     out = []
     for b in blocks:
-        label = b["label"] if isinstance(b, dict) else b.label
-        if label in JUNK:
+        if b.label in JUNK:
             continue                       # invented text is scored separately, as `spurious`
-        content = b["content"] if isinstance(b, dict) else b.content
-        boxed = b.get("boxed", True) if isinstance(b, dict) else b.boxed
         # A model that returned no coordinates gets no position score, rather than a free one.
-        box = list(b["box"] if isinstance(b, dict) else b.box) if boxed else None
-        raw = content or ""
+        box = list(b.box) if b.boxed else None
+        raw = b.content or ""
         pieces = re.split(r"</t[dh]>|</tr>|\n", raw) if "<t" in raw else raw.split("\n")
         for piece in pieces:
             line = norm(piece)
@@ -71,31 +70,44 @@ def best(line: str, candidates, near: list[int] | None = None) -> tuple[float, l
     def away(box) -> float:
         if not near or not box:
             return 0.0
-        return abs((box[0] + box[2]) / 2 - (near[0] + near[2]) / 2) + \
-               abs((box[1] + box[3]) / 2 - (near[1] + near[3]) / 2)
+        bx, by = centre(box)
+        nx, ny = centre(near)
+        return abs(bx - nx) + abs(by - ny)
 
+    # One matcher, with `line` indexed once, is difflib's own idiom for this loop.
+    matcher = SequenceMatcher(None, "", line, autojunk=False)
     for text, box in candidates:
-        # A cheap length filter first: SequenceMatcher on every pair is the slow part here.
+        # A cheap length filter first: a full ratio() on every pair is the slow part here.
         if not 0.4 <= len(text) / max(len(line), 1) <= 2.5:
             continue
-        ratio = 1.0 if line == text else SequenceMatcher(None, line, text).ratio()
+        if line == text:
+            if 1.0 > top or away(box) < away(where):
+                top, where = 1.0, box
+            continue
+        matcher.set_seq1(text)
+        if matcher.real_quick_ratio() < top or matcher.quick_ratio() < top:
+            continue                        # cannot beat the best so far; skip the O(n·m) pass
+        ratio = matcher.ratio()
         if ratio > top or (ratio == top and away(box) < away(where)):
             top, where = ratio, box
     return top, where
 
 
+def centre(box) -> tuple[float, float]:
+    return (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+
+
 def inside(box: list[int], target: list[int], slack: int = 30) -> bool:
     """Is the truth line's centre inside the block the model put its words in?"""
-    cx, cy = (target[0] + target[2]) / 2, (target[1] + target[3]) / 2
+    cx, cy = centre(target)
     return (box[0] - slack <= cx <= box[2] + slack
             and box[1] - slack <= cy <= box[3] + slack)
 
 
-def score_page(blocks, truth: list[dict]) -> dict:
+def score_page(blocks: list[Block], truth: list[dict]) -> dict:
     """One page: how much of it was read, and how much of it was placed."""
     model = lines_of(blocks)
-    wanted = [t for t in truth
-              if t["label"] not in GRAPHIC and t["label"] != "table" and norm(t["text"])]
+    wanted = [t for t in truth if t["label"] not in SKIP and norm(t["text"])]
 
     weight = read = 0.0
     found = placed = matched = 0
@@ -116,8 +128,7 @@ def score_page(blocks, truth: list[dict]) -> dict:
 
     # Graphics: the model should mark a region there, whatever it calls it.
     graphics = [t for t in truth if t["label"] in GRAPHIC]
-    boxes = [list(b["box"] if isinstance(b, dict) else b.box) for b in blocks
-             if (b.get("boxed", True) if isinstance(b, dict) else b.boxed)]
+    boxes = [list(b.box) for b in blocks if b.boxed]
     marked = sum(1 for g in graphics if any(inside(box, g["box"], 60) for box in boxes))
 
     # Text the model produced that matches nothing on the page. High means it is inventing.
@@ -125,8 +136,7 @@ def score_page(blocks, truth: list[dict]) -> dict:
     spurious = sum(1 for line, _ in model
                    if len(line) > 12 and best(line, truth_lines)[0] < MATCHED)
 
-    junk = sum(1 for b in blocks
-               if (b["label"] if isinstance(b, dict) else b.label) in JUNK)
+    junk = sum(1 for b in blocks if b.label in JUNK)
     return {
         "text": round(read / weight, 4) if weight else None,
         "position": round(placed / matched, 4) if matched else None,

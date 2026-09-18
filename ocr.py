@@ -39,10 +39,16 @@ COLOURS = {
     "title": "#d92b2b", "text": "#2b6cd9", "table": "#1a9e5c", "image": "#b453d9",
     "formula": "#d98c1a", "header": "#e2760c", "footer": "#8a8a8a", "caption": "#00a0a8",
     "page_number": "#7a7a7a", "unboxed": "#b3261e", "noise": "#b3261e",
+    "seal": "#c0392b", "signature": "#6c3483", "image_caption": "#00a0a8",
 }
 
 #: Block kinds a caller should not put into a markdown file. See `parse`.
 JUNK = {"noise", "unboxed"}
+
+
+#: The sampling knobs every caller starts from. Measured — see README on `frequency_penalty`.
+DEFAULT_KNOBS = {"max_tokens": 4096, "temperature": 0,
+                 "frequency_penalty": config.FREQUENCY_PENALTY}
 
 
 def ink(png: bytes) -> float:
@@ -56,8 +62,62 @@ def ink(png: bytes) -> float:
     with Image.open(io.BytesIO(png)) as im:
         grey = im.convert("L")
         small = grey.resize((max(grey.width // 4, 1), max(grey.height // 4, 1)))
-        dark = sum(1 for pixel in small.get_flattened_data() if pixel < 200)
-        return dark / (small.width * small.height)
+        counts = small.histogram()          # 256 buckets, counted in C
+        return sum(counts[:200]) / (small.width * small.height)
+
+
+def stitch(pngs: list[bytes]) -> tuple[bytes, list[int]]:
+    """Several page renders as ONE tall image, plus each page's height in it.
+
+    This is the workaround for oMLX dropping every image after the first: one image it cannot
+    drop. Measured — see README — two pages stitched come back in one request, in the time one
+    page takes, with both pages' text present and `prompt_tokens` up from 909 to 1539, which is
+    the proof that the second page was actually read.
+    """
+    from PIL import Image
+
+    pages = [Image.open(io.BytesIO(p)).convert("RGB") for p in pngs]
+    width = max(p.width for p in pages)
+    heights = [p.height for p in pages]
+    tall = Image.new("RGB", (width, sum(heights)), "white")
+    y = 0
+    for page in pages:
+        tall.paste(page, (0, y))
+        y += page.height
+    buf = io.BytesIO()
+    tall.save(buf, format="PNG")
+    return buf.getvalue(), heights
+
+
+def split_blocks(blocks: list[Block], heights: list[int]) -> list[list[Block]]:
+    """Blocks drawn on a stitched image, put back on the pages they came from.
+
+    A block is assigned to the page its centre falls on, and its box is re-expressed in that
+    page's own 0-1000 space — so the overlay and the answer key both work unchanged.
+    """
+    total = sum(heights) or 1
+    edges, run = [], 0
+    for h in heights:
+        edges.append((run, run + h))
+        run += h
+
+    pages: list[list[Block]] = [[] for _ in heights]
+    for b in blocks:
+        if not b.boxed:
+            pages[0].append(b)
+            continue
+        x0, y0, x1, y1 = b.box
+        top, bottom = y0 * total / 1000, y1 * total / 1000
+        middle = (top + bottom) / 2
+        index = next((i for i, (a, z) in enumerate(edges) if a <= middle < z), len(heights) - 1)
+        a, z = edges[index]
+        height = max(z - a, 1)
+        pages[index].append(Block(
+            b.label,
+            (x0, round(max(top - a, 0) * 1000 / height),
+             x1, round(min(bottom - a, height) * 1000 / height)),
+            b.content, b.boxed))
+    return pages
 
 
 def strip_markers(text: str) -> str:
@@ -194,30 +254,32 @@ def _parse_json(raw: str) -> list[Block]:
     if not isinstance(items, list) or not items or not isinstance(items[0], dict):
         return []
 
+    # The page's own scale, worked out once rather than per region. One stray pixel-scale box on
+    # an otherwise normalised page must not shrink everything else, so the majority decides.
+    reach = [max(float(b[2]), float(b[3])) for b in map(_box, items) if b]
+    pixels = sum(1 for r in reach if r > 1000) * 2 >= len(reach) if reach else False
+    widest = max(reach) if pixels else 0.0
+
     out: list[Block] = []
     for item in items:
-        box = item.get("bbox") or item.get("box") or item.get("boundingBox")
+        box = _box(item)
         content = item.get("text") or item.get("content") or item.get("caption") or ""
         label = str(item.get("category") or item.get("label") or item.get("type") or "text")
-        if not isinstance(box, (list, tuple)) or len(box) != 4:
+        if not box:
             out.append(Block(label.lower(), (0, 0, 1000, 1000), str(content), boxed=False))
             continue
         nums = [float(n) for n in box]
-        if max(nums) > 1000:                 # pixels, not the 0-1000 space this bench works in
-            nums = _to_thousandths(nums, items)
+        if widest:                           # pixels, not the 0-1000 space this bench works in
+            nums = [min(max(n * 1000 / widest, 0), 1000) for n in nums]
         out.append(Block(label.lower(), tuple(round(n) for n in nums),  # type: ignore[arg-type]
                          str(content)))
     return out
 
 
-def _to_thousandths(box: list[float], items: list[dict]) -> list[float]:
-    """Rescale pixel coordinates using the largest box the model itself reported as the page."""
-    widest = 1.0
-    for item in items:
-        other = item.get("bbox") or item.get("box") or item.get("boundingBox")
-        if isinstance(other, (list, tuple)) and len(other) == 4:
-            widest = max(widest, float(other[2]), float(other[3]))
-    return [n * 1000 / widest for n in box]
+def _box(item: dict):
+    """The one key a model used for its coordinates, whichever of the three it picked."""
+    box = item.get("bbox") or item.get("box") or item.get("boundingBox")
+    return box if isinstance(box, (list, tuple)) and len(box) == 4 else None
 
 
 def _parse_markdown(raw: str) -> list[Block]:
@@ -264,8 +326,7 @@ def ocr_page(png: bytes, size: tuple[int, int], index: int,
     """One page, one request. Never raises — a page that fails carries its own error."""
     result = PageResult(index=index, png=png, size=size)
     body = build_body(config.MODEL, prompt, [data_url(png)],
-                      {"max_tokens": max_tokens, "temperature": 0,
-                       "frequency_penalty": config.FREQUENCY_PENALTY})
+                      dict(DEFAULT_KNOBS, max_tokens=max_tokens))
     req = request(config.BASE_URL, config.API_KEY, body)
     started = time.time()
     try:
