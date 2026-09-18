@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 import time
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -51,6 +53,12 @@ KNOBS: dict[str, type] = {
 #: What the page starts with, and what `ocr.ocr_page` uses — defined there, so the bench and the
 #: one-shot CLI cannot drift apart.
 DEFAULT_KNOBS = ocr.DEFAULT_KNOBS
+
+#: How many pages may be in flight at once. oMLX batches requests, so overlapping them is free
+#: throughput on a model that does not already saturate the GPU — measured, four pages of the
+#: deed: chandra 31.3s one at a time against 22.9s four at a time, Unlimited-OCR 22.5s against
+#: 23.2s, i.e. no gain because it is already flat out. Off by default; it costs memory.
+MAX_IN_FLIGHT = 8
 
 #: How many pages go into one stitched image. Two is the measured ceiling: the vision encoder
 #: spends a fixed token budget on the picture however tall it is, so at four pages one page is
@@ -173,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"base_url": config.BASE_URL, "api_key": config.API_KEY,
                              "model": config.MODEL, "prompt": config.PROMPT, "dpi": config.DPI,
                              "knobs": DEFAULT_KNOBS, "colours": COLOURS, "junk": sorted(JUNK),
-                             "families": ocr.FAMILIES})
+                             "families": ocr.FAMILIES, "max_in_flight": MAX_IN_FLIGHT})
         elif url.path == "/api/samples":
             # Whatever `samples/make_samples.py` last drew, with its own labels. Drawn on
             # purpose: no real document, and no real person's name, ever.
@@ -285,6 +293,7 @@ class Handler(BaseHTTPRequestHandler):
         key = one("api_key", config.API_KEY)
         guard = str(one("guard", "1")) == "1"
         mode = str(one("mode", "page"))
+        in_flight = max(1, min(int(float(one("in_flight", 1))), MAX_IN_FLIGHT))
 
         knobs = dict(DEFAULT_KNOBS)
         for name, cast in KNOBS.items():
@@ -299,82 +308,83 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
 
-        def emit(event: str, payload: dict) -> bool:
-            try:
-                self.wfile.write(f"event: {event}\ndata: {json.dumps(payload)}\n\n".encode())
-                self.wfile.flush()
-                return True
-            except Exception:                                       # browser went away
-                return False
+        # Several pages may be in flight at once, and they all write to this one socket.
+        writing = threading.Lock()
+        gone = threading.Event()
 
-        # One request per page, or the whole document in one request. The second is what the
-        # model is built for and what oMLX cannot yet do: only the FIRST image reaches the model,
-        # so the answer covers page 1 alone. Kept in the bench so the bug can be reproduced.
+        def emit(event: str, payload: dict) -> bool:
+            if gone.is_set():
+                return False
+            with writing:
+                try:
+                    self.wfile.write(f"event: {event}\ndata: {json.dumps(payload)}\n\n".encode())
+                    self.wfile.flush()
+                    return True
+                except Exception:                                   # browser went away
+                    gone.set()
+                    return False
+
+        scores: list[dict] = []
         blanks = [p["blank"] for p in meta["pages"]]
         urls = [p["url"] for p in meta["pages"]]
-        # A blank page is skipped, not sent: with nothing to read this model counts instead, and
-        # pays the whole token cap for it.
         keep = [i for i, blank in enumerate(blanks) if not blank]
-        if not keep:
-            # Every page was blank. Nothing to send, and the one-request modes have no page to
-            # hang the request on — say so rather than building an empty image.
-            emit("start", {"pages": len(urls), "requests": 0, "blank": len(urls),
-                           "stitched": False, "model": model, "prompt": prompt,
-                           "mode": mode, "knobs": knobs})
-            for i in range(len(urls)):
-                emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
-                              "finish": "blank", "runaway": False, "raw": "", "usage": {},
-                              "images": 0, "blocks": []})
-            emit("done", {"seconds": 0, "score": None, "model": model})
-            return
+
+        # One plan per request: the page it reports as, what to send, and the pages to stitch.
         if mode == "stitch":
-            # Pages joined into ONE tall image, a few at a time. oMLX drops every image after the
-            # first, so one image is the only way to cover several pages in a request.
-            #
-            # The batch is small on purpose. Measured (see README): the vision encoder spends a
-            # fixed token budget on the picture however tall it is, so every page added makes
-            # every page smaller. Two pages is reliable, four already loses one, sixteen loses
-            # more than half. So this batches rather than stitching the whole document.
-            # The chunks are worked out here but each tall image is built only when its turn
-            # comes — stitching a whole document up front is seconds of dead time before the
-            # first token, and all of it wasted if the browser goes away.
-            stitched = [keep[at:at + STITCH_PAGES] for at in range(0, len(keep), STITCH_PAGES)]
-            groups = [[] for _ in stitched]
+            # oMLX drops every image after the first, so one tall image is the only way to cover
+            # several pages in one request. The batch is small on purpose: the vision encoder
+            # spends a fixed token budget on the picture however tall it is, so every page added
+            # makes every page smaller. Two is reliable, four already loses one. See the README.
+            plans = [(j, None, keep[at:at + STITCH_PAGES])
+                     for j, at in enumerate(range(0, len(keep), STITCH_PAGES))]
         elif mode == "whole":
-            groups, stitched = [[urls[i] for i in keep]], None
+            # What the model card describes, and what oMLX cannot do: every page as its own
+            # image. Only the first reaches the model. Kept so the bug is one click to reproduce.
+            plans = [(0, [urls[i] for i in keep], None)]
         else:
-            groups, stitched = [[] if blank else [u] for u, blank in zip(urls, blanks)], None
-        scores: list[dict] = []
-        emit("start", {"pages": len(urls), "requests": sum(1 for g in groups if g),
-                       "scored": bool(meta.get("truth")),
-                       "blank": sum(blanks), "model": model,
-                       "prompt": prompt, "mode": mode, "knobs": knobs})
+            plans = [(i, [urls[i]], None) for i in keep]
+
+        emit("start", {"pages": len(urls), "requests": len(plans), "blank": sum(blanks),
+                       "stitched": mode == "stitch", "in_flight": in_flight,
+                       "per_request": STITCH_PAGES if mode == "stitch" else 1,
+                       "model": model, "prompt": prompt, "mode": mode, "knobs": knobs})
 
         run_t0 = time.time()
-        if mode != "page":
-            # The one-request modes have no slot for a skipped page, so say so up front.
-            for i, blank in enumerate(blanks):
-                if blank and not emit("page", {
-                        "index": i, "blank": True, "seconds": 0, "error": "", "finish": "blank",
-                        "runaway": False, "raw": "", "usage": {}, "images": 0, "blocks": []}):
-                    return
-        for i, group in enumerate(groups):
-            if not group and not stitched:
-                if not emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
-                                     "finish": "blank", "runaway": False, "raw": "",
-                                     "usage": {}, "images": 0, "blocks": []}):
-                    return
-                continue
-            if stitched:
-                tall, heights = stitch([meta["png"][p] for p in stitched[i]])
-                group, chunk = [data_url(tall)], (stitched[i], heights)
-            else:
-                chunk = None
-            if not emit("page_start", {"index": i, "images": len(group)}):
+        # Blank pages are never sent — with nothing to read a model counts instead, and pays the
+        # whole token cap for it. They are reported once, up front, so the run still adds up.
+        for i, blank in enumerate(blanks):
+            if blank and not emit("page", {
+                    "index": i, "blank": True, "seconds": 0, "error": "", "finish": "blank",
+                    "runaway": False, "raw": "", "usage": {}, "images": 0, "blocks": []}):
                 return
-            if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard,
-                                meta.get("truth") or [], scores, chunk):
+
+        def unit(at: int) -> bool:
+            """One request, from one plan."""
+            if gone.is_set():
+                return False            # the reader closed the tab; do not start another request
+            index, group, chunk = plans[at]
+            if chunk is not None:
+                # Built here, not up front: stitching a whole document before the first request
+                # is dead time, and wasted entirely if the reader goes away.
+                tall, heights = stitch([meta["png"][p] for p in chunk])
+                group, chunk = [data_url(tall)], (chunk, heights)
+            if not emit("page_start", {"index": index, "images": len(group)}):
+                return False
+            return self.run_one(index, group, emit, base, key, model, prompt, knobs, guard,
+                                meta.get("truth") or [], scores, chunk)
+
+        if in_flight > 1:
+            # Out of order on purpose: the page events carry their own index, and the browser
+            # files them by it. What the reader sees is several pages filling in at once. A
+            # closed tab sets `gone`, so the pages still queued return without asking the model.
+            with ThreadPoolExecutor(max_workers=in_flight) as pool:
+                done = list(pool.map(unit, range(len(plans))))
+            if not all(done):
                 return
+        else:
+            for at in range(len(plans)):
+                if not unit(at):
+                    return
         emit("done", {"seconds": round(time.time() - run_t0, 2),
                       "score": score.combine(scores) if scores else None,
                       "model": model})

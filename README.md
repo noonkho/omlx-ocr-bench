@@ -155,12 +155,35 @@ single sample**. Neither is a clean winner, which is the entire argument for hav
 
 ### What is wrong with `chandra-ocr-2`
 
-1. **It ignores the prompt.** Five different prompts — `Convert this page to markdown.`,
-   `document parsing.`, `Free OCR.`, `Multi page parsing.`, `OCR this document.` — returned
-   byte-identical output. Nothing you write in that box will change what it does.
-2. **It is slow.** 10–28 s a page against 2–22 s, and it never dips below 10 s even on the
-   Chinese notice that Unlimited-OCR reads in 1.9 s. It also costs more to prompt: 2,165 input
-   tokens for a page that costs Unlimited-OCR 909.
+1. **The prompt reaches it and changes nothing.** chandra publishes its own prompts
+   ([`chandra/prompts.py`](https://github.com/datalab-to/chandra/blob/master/chandra/prompts.py)):
+   a 2,161-character `OCR_LAYOUT_PROMPT` and a 1,654-character `OCR_PROMPT` that explicitly does
+   *not* ask for layout blocks. Sending those, a short paraphrase, or `Describe the weather in
+   Paris.` all return the same layout-annotated HTML:
+
+   | prompt | input tokens | output | `data-bbox` present |
+   |---|---|---|---|
+   | `Describe the weather in Paris.` | 2,165 | 1,716 | yes |
+   | chandra's own `OCR_PROMPT` (no layout) | 2,590 | 1,659 | **yes** |
+   | chandra's own `OCR_LAYOUT_PROMPT` | 2,738 | 1,625 | yes |
+   | `Convert this page to markdown.` | 2,165 | 1,685 | yes |
+
+   The input token count rises with the prompt's length, so oMLX is delivering it — the model
+   simply does one thing. Practical consequence: **send the shortest prompt**, because the
+   official one costs ~570 extra input tokens a page for identical output.
+2. **It is slow, and it is slow at the output end.** 10–28 s a page against 2–22 s, never below
+   10 s even on the Chinese notice Unlimited-OCR reads in 1.9 s. It emits ~1,650 tokens for a page
+   where Unlimited-OCR emits ~400, and at ~100 tok/s that generation *is* the runtime. Lowering
+   the render DPI does not help, which is the useful thing to know:
+
+   | render DPI | image | input tokens | time |
+   |---|---|---|---|
+   | 96 | 795×1,124 | 1,468 | 16.7 s |
+   | 120 | 993×1,405 | 1,957 | 16.8 s |
+   | 150 | 1,241×1,756 | 2,738 | 16.7 s |
+   | 200 | 1,655×2,341 | 4,389 | 19.7 s |
+
+   Halving the input changes nothing; only pushing past 150 dpi costs. See "Making it faster".
 3. **It answers in a fourth format** — `<div data-bbox="62 36 140 100" data-label="Image">` —
    which nothing else emits. The bench reads it now; before it did, chandra scored as if it had
    returned no layout at all. Worth knowing if you write your own client.
@@ -168,6 +191,37 @@ single sample**. Neither is a clean winner, which is the entire argument for hav
 5. **It invents occasionally:** one spurious block on three of the seven samples.
 
 Neither model's problems are oMLX's fault, except the multi-page one, which is entirely oMLX's.
+
+## Making it faster
+
+The one lever that works is **overlapping requests**. oMLX batches what it is given, so a model
+that leaves the machine idle between tokens finishes a document sooner when several pages are in
+flight. The bench exposes it as **Run → Pages at once**.
+
+| four pages of the deed | 1 at a time | 2 | 4 |
+|---|---|---|---|
+| `chandra-ocr-2-8bit-mlx` | 31.3 s | 24.1 s | **22.9 s** |
+| `Unlimited-OCR-bf16` | 22.5 s | 23.0 s | 23.2 s |
+
+chandra gains about 28%; Unlimited-OCR gains nothing, because it is already saturating the GPU.
+End to end through the bench on the three-page deed: **23.5 s → 16.9 s, same 72.6% text score.**
+Pages arrive out of order and the page files them by index.
+
+What does **not** work, measured above: lowering the render DPI (the time is in generation, not
+perception) and shortening or lengthening the prompt (chandra's output is the same either way,
+though the short prompt is cheaper).
+
+Two things left to try, neither tested here:
+
+* **A smaller quant.** `chandra-ocr-2` is only published at 8-bit
+  ([`jwindle47/chandra-ocr-2-8bit-mlx`](https://huggingface.co/jwindle47/chandra-ocr-2-8bit-mlx))
+  and bf16. The older `chandra` has
+  [4-bit](https://huggingface.co/mlx-community/chandra-4bit) and
+  [3-bit](https://huggingface.co/mlx-community/chandra-3bit) MLX builds; a 4-bit chandra-ocr-2
+  would be the obvious win and does not appear to exist yet.
+* **oMLX's speculative decoding.** 0.6.4 ships Lightning MTP, VLM MTP and DFlash, worth roughly
+  2× on text models. Whether any applies to this VLM is
+  [an open question](https://github.com/jundot/omlx/issues/1779).
 
 ## Models worth trying next
 

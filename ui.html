@@ -206,8 +206,9 @@ pre.out .det{color:var(--muted);opacity:.75}
         <p class="hint" id="presethint"></p>
         <p class="hint"><b>Do not start it with <code>&lt;image&gt;</code>.</b> oMLX adds its own
           image placeholder, so a literal one makes two placeholders for one image and the server
-          returns HTTP 500. Measured. Some models ignore the prompt entirely — chandra returned
-          byte-identical output to five different ones.</p>
+          returns HTTP 500. Measured. Some models do not answer the prompt at all — chandra returns the
+          same layout-annotated HTML whether you send its own documented prompt, a short one, or
+          a question about the weather.</p>
       </div>
 
       <details class="grp" id="conn" open>
@@ -271,8 +272,14 @@ pre.out .det{color:var(--muted);opacity:.75}
               <option value="whole">all pages, many images</option>
             </select></div>
         </div>
+        <div class="row" style="margin-top:8px">
+          <div><label class="lbl" for="in_flight">Pages at once</label>
+            <input type="number" id="in_flight" min="1" step="1" value="1"></div>
+          <div></div>
+        </div>
         <p class="hint">150 dpi is enough for typed English. Traditional Chinese reads better at
           200&ndash;300.</p>
+        <p class="hint" id="flighthint"></p>
         <p class="hint" id="modehint"></p>
         <label class="check">
           <input type="checkbox" id="guard" checked>
@@ -291,7 +298,9 @@ pre.out .det{color:var(--muted);opacity:.75}
       <h3>Prompt</h3>
       <p>The instruction sent with the page. OCR models are trained on a handful of exact
         phrases, so a "better written" prompt usually works worse. The presets are grouped by
-        model, with the one you have selected first. Some models ignore the prompt completely.
+        model, with the one you have selected first. Some models do not answer it at all: the
+        text is delivered — you can watch the input token count rise — but chandra returns the
+        same thing whatever it says, so the shortest prompt is the cheapest.
         <span class="try">Never start it with <code>&lt;image&gt;</code> — oMLX adds its own, and
           two placeholders for one image returns HTTP 500.</span></p>
 
@@ -355,6 +364,13 @@ pre.out .det{color:var(--muted);opacity:.75}
       <p>How much the model can hold at once, prompt and answer together. It is a property of the
         checkpoint, not a request field, so it is shown next to the model rather than set here.
         <span class="try">A page render costs roughly 900 tokens of it.</span></p>
+
+      <h3>Pages at once</h3>
+      <p>How many pages may be waiting on the server together. oMLX batches requests, so a model
+        that leaves the machine idle between tokens finishes a document faster when several
+        overlap.
+        <span class="try">Four pages of the deed: chandra 31.3s at one a time, 22.9s at four.
+          Unlimited-OCR went 22.5s to 23.2s — already flat out, so it only costs memory.</span></p>
 
       <h3>Render DPI</h3>
       <p>How finely the PDF is turned into an image before sending. Higher is sharper, slower,
@@ -444,6 +460,7 @@ fetch("/api/defaults").then(r => r.json()).then(d => {
   $("#prompt").value = d.prompt; $("#dpi").value = d.dpi;
   $("#model").innerHTML = `<option>${esc(d.model)}</option>`;
   COLOURS = d.colours || {}; JUNK = new Set(d.junk || []); FAMILIES = d.families || [];
+  $("#in_flight").max = d.max_in_flight || 8;
   fillPresets();
   Object.entries(d.knobs || {}).forEach(([k, v]) => { if ($("#" + k)) $("#" + k).value = v; });
   test();
@@ -453,7 +470,19 @@ fetch("/api/defaults").then(r => r.json()).then(d => {
 $("#test").onclick = test;
 $("#model").onchange = () => { modelNote(); fillPresets(); };
 $("#mode").onchange = modeNote;
-modeNote();
+$("#in_flight").oninput = flightNote;
+modeNote(); flightNote();
+
+/** Overlapping requests is free throughput on a model that is not already flat out — and nothing
+ *  at all on one that is. Measured numbers, so the panel can say which is which. */
+function flightNote(){
+  const n = Number($("#in_flight").value) || 1;
+  $("#flighthint").innerHTML = n <= 1
+    ? `One page at a time. Raise this if the model leaves the machine idle between tokens.`
+    : `<b>${n} requests in flight.</b> oMLX batches them, so this is free throughput on a model
+       that is not already flat out — and nothing at all on one that is. Pages finish out of
+       order. The guide tab has the measured numbers.`;
+}
 
 async function test(){
   const s = $("#connstate"); s.className = "state"; s.textContent = "checking…";
@@ -606,6 +635,7 @@ $("#run").onclick = () => {
   // URL — `EventSource` cannot send headers, and a URL ends up in history and in proxy logs.
   const settings = {job:JOB, prompt:$("#prompt").value, model:$("#model").value,
     base_url:$("#url").value, api_key:$("#key").value, mode:$("#mode").value,
+    in_flight: $("#in_flight").value || "1",
     guard: $("#guard").checked ? "1" : "0"};
   KNOBS.forEach(k => { const v = $("#" + k).value.trim(); if (v !== "") settings[k] = v; });
   start(settings, units);

@@ -57,7 +57,11 @@ FAMILIES = [
         ("Extract the text in the image.", "text only, plainer wording"),
     ]},
     {"name": "chandra", "match": r"chandra", "prompts": [
-        ("Convert this page to markdown.", "measured: this model ignores the prompt entirely"),
+        ("Convert this page to markdown.",
+         "anything works — measured: this model's output does not change with the prompt"),
+        ("OCR this image to HTML, arranged as layout blocks.",
+         "the opening line of chandra's own OCR_LAYOUT_PROMPT"),
+        ("OCR this image to HTML.", "the opening line of chandra's own OCR_PROMPT"),
     ]},
     {"name": "PaddleOCR-VL / Qianfan", "match": r"paddle|qianfan|ernie", "prompts": [
         ("document parsing.", "the documented prompt for both"),
