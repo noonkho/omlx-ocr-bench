@@ -1,0 +1,9 @@
+{
+  "legal_deed.pdf": "Legal — deed, numbered clauses, schedule table, three signatures, an inked and an embossed seal, then a near-blank exhibit divider",
+  "gov_permit.pdf": "Government — premises licence, crest, hours table, conditions box, figure, barcode, council seal",
+  "school_transcript.pdf": "School — transcript, grade table, tutor's remarks, two signatures, embossed seal",
+  "commercial_invoice.pdf": "Commercial — invoice, logo, line-item table, totals, barcode, PAID chop",
+  "notice_zh.pdf": "Traditional Chinese — release notice, table, signature, chop",
+  "scan_permit.png": "Poor lighting — the permit as a phone photo: skewed, noisy, lit from one side",
+  "scan_notice_zh.png": "Poor lighting — the Chinese notice as a phone photo"
+}

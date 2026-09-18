@@ -18,9 +18,21 @@ import config
 #: Coordinates are 0-1000 NORMALISED to the page, not pixels — so they survive any render DPI.
 _DET = re.compile(r"<\|det\|>\s*(\w+)\s*\[([\d\s,]+)\]\s*<\|/det\|>")
 
-#: A run of bare numbers — `1. 2. 3. 4. …` or `2. 2. 2. …` — which this model emits before the
-#: first real block on a page that holds almost no text. Never document content.
-_COUNTER = re.compile(r"^(?:\d+\.\s*){4,}")
+#: A run of bare numbers — `1. 2. 3. 4. …`, `2. 2. 2. …`, `1.2.3.4.5.6.` — which this model emits
+#: when a page holds almost no text for it to read. Never document content.
+_COUNTER = re.compile(r"^(?:\d+\.\s*){4,}$")
+
+#: The model talking about its own annotation rules instead of reading the page. Seen on a sparse
+#: page: "The Ground Truth image displays a single, solid horizontal line. According to Rule 2
+#: (UNDERSCORE & LINE RULES)…". It is training-harness text, never document content — but it is
+#: inside a `<|det|>` box, so it needs catching separately from the counter.
+_LEAK = re.compile(r"ground truth image|according to rule \d|\b(?:RULE|RULES)\s*\d+\s*\(",
+                   re.IGNORECASE)
+
+#: Below this share of dark pixels a page carries no text worth sending. Measured: a truly blank
+#: page renders at 0.0000, and the sparsest real page tested (four short lines) at 0.0073 — so
+#: this sits an order of magnitude below anything a caller would want read.
+BLANK_INK = 0.0008
 
 #: One colour per block kind, for the overlay.
 COLOURS = {
@@ -31,6 +43,21 @@ COLOURS = {
 
 #: Block kinds a caller should not put into a markdown file. See `parse`.
 JUNK = {"noise", "unboxed"}
+
+
+def ink(png: bytes) -> float:
+    """How much of the page is dark, 0 to 1. A blank page is not worth a request.
+
+    Measured, not guessed — see README. On a blank page this model has nothing to read and
+    counts instead, burning seconds and the whole token cap. The cheapest fix is to never ask.
+    """
+    from PIL import Image
+
+    with Image.open(io.BytesIO(png)) as im:
+        grey = im.convert("L")
+        small = grey.resize((max(grey.width // 4, 1), max(grey.height // 4, 1)))
+        dark = sum(1 for pixel in small.get_flattened_data() if pixel < 200)
+        return dark / (small.width * small.height)
 
 
 def strip_markers(text: str) -> str:
@@ -123,7 +150,10 @@ def parse(raw: str) -> list[Block]:
             continue
         end = marks[i + 1].start() if i + 1 < len(marks) else len(raw)
         content = raw[m.end():end].strip()
-        block = Block(m.group(1).lower(), tuple(nums), content)  # type: ignore[arg-type]
+        label = m.group(1).lower()
+        if _COUNTER.match(content.strip()) or _LEAK.search(content):
+            label = "noise"                  # the counter, or the model's own rulebook
+        block = Block(label, tuple(nums), content)  # type: ignore[arg-type]
         if out and out[-1].label == block.label and out[-1].content == block.content:
             continue                                     # the same read, twice
         out.append(block)

@@ -51,6 +51,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 textarea{resize:vertical;min-height:58px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:12.5px;line-height:1.45}
 .row{display:flex;gap:8px}.row > *{flex:1 1 0;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.chips button{flex:0 0 auto;white-space:nowrap;padding:5px 10px;font-size:12px}
 .knobs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .knobs .lbl{margin-bottom:3px;font-size:10px;text-transform:none;letter-spacing:0;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-weight:600}
@@ -127,6 +129,8 @@ pre.out .det{color:var(--muted);opacity:.75}
   padding:7px 10px;margin:8px 0;font-size:12px;color:var(--muted);
   background:color-mix(in srgb,var(--warn) 5%,transparent)}
 .md .junk b{display:block;color:var(--warn);font-weight:650;margin-bottom:2px}
+.md .blank{border:1px dashed var(--line);border-radius:8px;padding:9px 11px;margin:8px 0;
+  color:var(--muted);font-size:12.5px;text-align:center}
 .md .imgblock{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;
   color:var(--muted);font-size:12px}
 .blk{padding:6px 8px;border-radius:7px;border:1px solid transparent;cursor:pointer}
@@ -155,14 +159,16 @@ pre.out .det{color:var(--muted);opacity:.75}
         </div>
         <input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" hidden>
         <div id="chosen"></div>
-        <p class="hint" style="margin-top:8px">or try a built-in synthetic page:</p>
-        <div class="row" id="samples" style="margin-top:5px"></div>
+        <p class="hint" style="margin-top:8px">or try a drawn sample — legal, government,
+          school, commercial, Chinese, and two as bad phone photos. Hover for what each one
+          is meant to exercise.</p>
+        <div class="chips" id="samples"></div>
       </div>
 
       <div class="grp">
         <label for="prompt">Prompt</label>
         <textarea id="prompt" spellcheck="false"></textarea>
-        <div class="row" style="margin-top:7px;flex-wrap:wrap">
+        <div class="chips">
           <button class="ghost" data-p="Multi page parsing.">Multi page</button>
           <button class="ghost" data-p="document parsing.">Document</button>
           <button class="ghost" data-p="Free OCR.">Free OCR</button>
@@ -387,7 +393,7 @@ fetch("/api/samples").then(r => r.json()).then(d => {
   if (!d.ok || !d.samples.length) return;
   $("#samples").innerHTML = d.samples.map(s =>
     `<button class="ghost" data-s="${esc(s.name)}" title="${esc(s.label)}">${
-      esc(s.name.replace(/^synthetic_/, "").replace(/\.\w+$/, ""))}</button>`).join("");
+      esc(s.name.replace(/\.\w+$/, "").replace(/_/g, " "))}</button>`).join("");
   document.querySelectorAll("[data-s]").forEach(b => b.onclick = async () => {
     const r = await fetch("/api/sample?name=" + encodeURIComponent(b.dataset.s)).then(r=>r.json());
     if (!r.ok) return;
@@ -410,7 +416,7 @@ $("#run").onclick = () => {
   reset(); RESULTS = new Array(units).fill(null);
   $("#run").disabled = true; $("#prog").style.transform = "scaleX(0)";
   $("#runstate").className = "state"; $("#runstate").textContent = "starting…";
-  draw();
+  follow = true; draw();
 
   // The settings are POSTed and the stream quotes a ticket, so the API key never appears in a
   // URL — `EventSource` cannot send headers, and a URL ends up in history and in proxy logs.
@@ -454,8 +460,11 @@ async function start(settings, units){
     const d = JSON.parse(e.data);
     const tok = RESULTS.reduce((a,p) => a + ((p && p.usage && p.usage.completion_tokens) || 0), 0);
     $("#runstate").className = "state ok";
-    $("#runstate").textContent = `${units} request(s) · ${d.seconds}s · ${tok} out tokens` +
-      (d.seconds ? ` · ${Math.round(tok/d.seconds)} tok/s` : "");
+    const blank = RESULTS.filter(p => p && p.blank).length;
+    $("#runstate").textContent =
+      `${units - blank} request(s) · ${d.seconds}s · ${tok} out tokens` +
+      (d.seconds ? ` · ${Math.round(tok/d.seconds)} tok/s` : "") +
+      (blank ? ` · ${blank} blank page(s) skipped` : "");
     $("#run").disabled = false; ES.close(); ES = null;
   });
   ES.onerror = () => {
@@ -471,6 +480,17 @@ function schedule(){
   if (pending) return;
   pending = true;
   requestAnimationFrame(() => { pending = false; draw(); });
+}
+
+/** Keep the newest words in view while the model writes — but stop the moment the reader scrolls
+ *  up to look at something, and start again when they come back to the bottom. */
+let follow = true;
+const pane = $("#out");
+pane.addEventListener("scroll", () => {
+  follow = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 60;
+});
+function keepUp(){
+  if (follow) pane.scrollTop = pane.scrollHeight;
 }
 
 // ---------------------------------------------------------------- the middle pane
@@ -502,11 +522,14 @@ function draw(){
     if (p) CACHE.set(i, html);                  // a finished page never changes again
     out.push(html);
   }
-  $("#out").innerHTML = out.join("") || `<p class="empty">Nothing yet.</p>`;
+  pane.innerHTML = out.join("") || `<p class="empty">Nothing yet.</p>`;
   $("#outnote").textContent = flagged ? "a page was cut short — runaway repeat" : "";
+  keepUp();
 }
 
 function body(i, p, live){
+  if (p && p.blank) return `<div class="md"><div class="blank">Blank page — not sent.
+    With nothing to read this model counts instead, and pays the whole token cap for it.</div></div>`;
   if (p && p.error) return `<p style="color:var(--warn)">${esc(p.error)}</p>`;
   const raw = p ? p.raw : live.raw;
   const blocks = p ? p.blocks : live.blocks;
@@ -519,9 +542,9 @@ function head(i, p){
   const u = (p && p.usage) || {};
   const rate = p && p.seconds ? ` · ${Math.round((u.completion_tokens||0)/p.seconds)} tok/s` : "";
   const label = WHOLE ? "Whole document" : `Page ${i+1}`;
-  const stat = p
-    ? `${p.seconds}s · ${u.completion_tokens||0} out / ${u.prompt_tokens||0} in${rate} · ${p.blocks.length} blocks`
-    : `<span class="live"></span> reading…`;
+  const stat = !p ? `<span class="live"></span> reading…`
+    : p.blank ? "skipped"
+    : `${p.seconds}s · ${u.completion_tokens||0} out / ${u.prompt_tokens||0} in${rate} · ${p.blocks.length} blocks`;
   return `<div class="pagehead"><b>${label}</b><span>${stat}</span>
     ${p && p.images > 1 ? `<span class="flag soft">${p.images} images sent</span>` : ""}
     ${p && p.finish === "length" ? '<span class="flag">hit the token cap</span>' : ""}

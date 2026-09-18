@@ -23,7 +23,8 @@ from urllib.parse import parse_qs, urlparse
 
 import config
 import ocr
-from ocr import COLOURS, JUNK, build_body, data_url, http_detail, parse, render_pages, request
+from ocr import (BLANK_INK, COLOURS, JUNK, build_body, data_url, http_detail, ink,
+                 parse, render_pages, request)
 
 HERE = Path(__file__).parent
 JOBS: dict[str, dict] = {}
@@ -167,13 +168,13 @@ class Handler(BaseHTTPRequestHandler):
                              "model": config.MODEL, "prompt": config.PROMPT, "dpi": config.DPI,
                              "knobs": DEFAULT_KNOBS, "colours": COLOURS, "junk": sorted(JUNK)})
         elif url.path == "/api/samples":
-            # The bundled synthetic pages, so the bench demonstrates itself without the user
-            # having to find a document first. Synthetic on purpose: no real documents, ever.
+            # Whatever `samples/make_samples.py` last drew, with its own labels. Drawn on
+            # purpose: no real document, and no real person's name, ever.
+            index = HERE / "samples" / "index.json"
+            labels = json.loads(index.read_text()) if index.exists() else {}
             self._json(200, {"ok": True, "samples": [
-                {"name": f.name, "label": label} for f, label in (
-                    (HERE / "samples" / "synthetic_hk.pdf", "HK writ, 2 pages, EN + a chop"),
-                    (HERE / "samples" / "synthetic_zh.png", "Traditional Chinese notice, 1 page"),
-                ) if f.exists()]})
+                {"name": name, "label": label} for name, label in labels.items()
+                if (HERE / "samples" / name).exists()]})
         elif url.path == "/api/sample":
             name = (parse_qs(url.query).get("name") or [""])[0]
             path = (HERE / "samples" / Path(name).name)
@@ -242,7 +243,10 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             tmp.unlink(missing_ok=True)
 
-        pages = [{"index": i, "w": size[0], "h": size[1], "url": data_url(png)}
+        # A blank page is measured here, once, so the run can skip it rather than ask the model
+        # to read nothing. See `ocr.ink` and the README.
+        pages = [{"index": i, "w": size[0], "h": size[1], "url": data_url(png),
+                  "blank": ink(png) < BLANK_INK}
                  for i, (png, size) in enumerate(rendered)]
         job = uuid.uuid4().hex
         JOBS[job] = {"name": name, "pages": pages, "dpi": dpi, "at": time.time()}
@@ -295,13 +299,24 @@ class Handler(BaseHTTPRequestHandler):
         # One request per page, or the whole document in one request. The second is what the
         # model is built for and what oMLX cannot yet do: only the FIRST image reaches the model,
         # so the answer covers page 1 alone. Kept in the bench so the bug can be reproduced.
+        blanks = [p["blank"] for p in meta["pages"]]
         urls = [p["url"] for p in meta["pages"]]
-        groups = [urls] if whole else [[u] for u in urls]
-        emit("start", {"pages": len(urls), "requests": len(groups), "model": model,
+        # A blank page is skipped, not sent: with nothing to read this model counts instead, and
+        # pays the whole token cap for it. In whole-document mode the blanks simply do not go.
+        groups = [[u for u, b in zip(urls, blanks) if not b]] if whole else \
+                 [[] if b else [u] for u, b in zip(urls, blanks)]
+        emit("start", {"pages": len(urls), "requests": sum(1 for g in groups if g),
+                       "blank": sum(blanks), "model": model,
                        "prompt": prompt, "mode": "whole" if whole else "page", "knobs": knobs})
 
         run_t0 = time.time()
         for i, group in enumerate(groups):
+            if not group:
+                if not emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
+                                     "finish": "blank", "runaway": False, "raw": "",
+                                     "usage": {}, "images": 0, "blocks": []}):
+                    return
+                continue
             if not emit("page_start", {"index": i, "images": len(group)}):
                 return
             if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard):

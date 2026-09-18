@@ -1,3 +1,8 @@
 out/
 __pycache__/
 .venv/
+# The first two sample pages are kept out of the public repo on purpose.
+# `uv run samples/make_samples.py` draws the pack that replaces them.
+samples/synthetic_hk.pdf
+samples/synthetic_zh.png
+.DS_Store
