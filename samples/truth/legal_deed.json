@@ -1,0 +1,731 @@
+{
+ "file": "legal_deed.pdf",
+ "pages": [
+  [
+   {
+    "label": "title",
+    "text": "DEED OF ASSIGNMENT",
+    "box": [
+     342,
+     52,
+     658,
+     77
+    ]
+   },
+   {
+    "label": "title",
+    "text": "of goodwill and trade marks",
+    "box": [
+     394,
+     80,
+     606,
+     96
+    ]
+   },
+   {
+    "label": "text",
+    "text": "THIS DEED is made on the 11th day of February 2026",
+    "box": [
+     121,
+     125,
+     516,
+     141
+    ]
+   },
+   {
+    "label": "text",
+    "text": "BETWEEN",
+    "box": [
+     121,
+     150,
+     212,
+     166
+    ]
+   },
+   {
+    "label": "text",
+    "text": "(1) ARDWICK & NOLL TRADING LIMITED, a company incorporated in Hong Kong with company",
+    "box": [
+     153,
+     171,
+     856,
+     185
+    ]
+   },
+   {
+    "label": "text",
+    "text": "number 6612940, whose registered office is at Room 1804, Hoi Ming Commercial Centre, 118 Rutland",
+    "box": [
+     153,
+     189,
+     860,
+     203
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Street, Sheung Wan (the \"Assignor\"); and",
+    "box": [
+     153,
+     206,
+     440,
+     221
+    ]
+   },
+   {
+    "label": "text",
+    "text": "(2) PELLMORE HOLDINGS (ASIA) LIMITED, a company incorporated in Hong Kong with company",
+    "box": [
+     153,
+     231,
+     865,
+     245
+    ]
+   },
+   {
+    "label": "text",
+    "text": "number 7204418, whose registered office is at 27/F, Cavendale Tower, 9 Ferrier Road, Quarry Bay (the",
+    "box": [
+     153,
+     248,
+     859,
+     263
+    ]
+   },
+   {
+    "label": "text",
+    "text": "\"Assignee\").",
+    "box": [
+     153,
+     266,
+     239,
+     280
+    ]
+   },
+   {
+    "label": "text",
+    "text": "WHEREAS the Assignor carries on the business of specialty coffee roasting under the name Ardwick Roastery",
+    "box": [
+     121,
+     301,
+     877,
+     315
+    ]
+   },
+   {
+    "label": "text",
+    "text": "and is the registered proprietor of the trade marks listed in the Schedule, and has agreed to assign the same to",
+    "box": [
+     121,
+     319,
+     861,
+     333
+    ]
+   },
+   {
+    "label": "text",
+    "text": "the Assignee for the consideration set out below.",
+    "box": [
+     121,
+     336,
+     453,
+     351
+    ]
+   },
+   {
+    "label": "text",
+    "text": "NOW THIS DEED WITNESSES as follows:",
+    "box": [
+     121,
+     369,
+     460,
+     384
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1.",
+    "box": [
+     121,
+     394,
+     134,
+     409
+    ]
+   },
+   {
+    "label": "text",
+    "text": "In consideration of the sum of HK$4,850,000 (receipt of which the Assignor acknowledges) the Assignor",
+    "box": [
+     153,
+     394,
+     874,
+     408
+    ]
+   },
+   {
+    "label": "text",
+    "text": "assigns to the Assignee absolutely all its right, title and interest in the trade marks listed in the Schedule,",
+    "box": [
+     153,
+     411,
+     862,
+     426
+    ]
+   },
+   {
+    "label": "text",
+    "text": "together with the goodwill of the business to which they relate.",
+    "box": [
+     153,
+     429,
+     583,
+     443
+    ]
+   },
+   {
+    "label": "text",
+    "text": "2.",
+    "box": [
+     121,
+     455,
+     134,
+     470
+    ]
+   },
+   {
+    "label": "text",
+    "text": "The Assignor shall at the Assignee's cost execute every further document reasonably required to give",
+    "box": [
+     153,
+     455,
+     841,
+     469
+    ]
+   },
+   {
+    "label": "text",
+    "text": "effect to this Deed, including any form required by the Registrar.",
+    "box": [
+     153,
+     472,
+     595,
+     487
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3.",
+    "box": [
+     121,
+     498,
+     134,
+     513
+    ]
+   },
+   {
+    "label": "text",
+    "text": "The Assignor warrants that the trade marks are free of any charge, licence or adverse claim, and that no",
+    "box": [
+     153,
+     498,
+     852,
+     512
+    ]
+   },
+   {
+    "label": "text",
+    "text": "third party has asserted a right in them within the past six years.",
+    "box": [
+     153,
+     516,
+     587,
+     530
+    ]
+   },
+   {
+    "label": "text",
+    "text": "4.",
+    "box": [
+     121,
+     541,
+     134,
+     556
+    ]
+   },
+   {
+    "label": "text",
+    "text": "This Deed is governed by the laws of the Hong Kong Special Administrative Region.",
+    "box": [
+     153,
+     541,
+     736,
+     556
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Page 1 of 2",
+    "box": [
+     815,
+     963,
+     879,
+     975
+    ]
+   }
+  ],
+  [
+   {
+    "label": "text",
+    "text": "THE SCHEDULE",
+    "box": [
+     121,
+     51,
+     272,
+     68
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Registered trade marks assigned",
+    "box": [
+     121,
+     73,
+     333,
+     87
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Mark",
+    "box": [
+     128,
+     105,
+     166,
+     119
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Registration no.",
+    "box": [
+     467,
+     105,
+     590,
+     119
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Classes",
+    "box": [
+     676,
+     105,
+     737,
+     119
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Renewal due",
+    "box": [
+     789,
+     105,
+     887,
+     119
+    ]
+   },
+   {
+    "label": "text",
+    "text": "ARDWICK ROASTERY",
+    "box": [
+     128,
+     128,
+     295,
+     142
+    ]
+   },
+   {
+    "label": "text",
+    "text": "304812996",
+    "box": [
+     467,
+     128,
+     546,
+     142
+    ]
+   },
+   {
+    "label": "text",
+    "text": "30, 43",
+    "box": [
+     676,
+     128,
+     721,
+     142
+    ]
+   },
+   {
+    "label": "text",
+    "text": "08 Jun 2029",
+    "box": [
+     789,
+     128,
+     878,
+     142
+    ]
+   },
+   {
+    "label": "text",
+    "text": "ARDWICK (device)",
+    "box": [
+     128,
+     150,
+     265,
+     165
+    ]
+   },
+   {
+    "label": "text",
+    "text": "304813011",
+    "box": [
+     467,
+     150,
+     546,
+     165
+    ]
+   },
+   {
+    "label": "text",
+    "text": "30",
+    "box": [
+     676,
+     150,
+     694,
+     165
+    ]
+   },
+   {
+    "label": "text",
+    "text": "08 Jun 2029",
+    "box": [
+     789,
+     150,
+     878,
+     165
+    ]
+   },
+   {
+    "label": "text",
+    "text": "SLOW HARVEST",
+    "box": [
+     128,
+     173,
+     255,
+     187
+    ]
+   },
+   {
+    "label": "text",
+    "text": "305226704",
+    "box": [
+     467,
+     173,
+     546,
+     187
+    ]
+   },
+   {
+    "label": "text",
+    "text": "30",
+    "box": [
+     676,
+     173,
+     694,
+     187
+    ]
+   },
+   {
+    "label": "text",
+    "text": "22 Nov 2031",
+    "box": [
+     789,
+     173,
+     880,
+     187
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Mark Registration no. Classes Renewal due ARDWICK ROASTERY 304812996 30, 43 08 Jun 2029 ARDWICK (device) 304813011 30 08 Jun 2029 SLOW HARVEST 305226704 30 22 Nov 2031",
+    "box": [
+     121,
+     100,
+     959,
+     191
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Adjudication has been sought under section 13 of the Stamp Duty Ordinance. This counterpart is not to be relied",
+    "box": [
+     131,
+     253,
+     850,
+     265
+    ]
+   },
+   {
+    "label": "text",
+    "text": "on as evidence of title until stamped.",
+    "box": [
+     131,
+     268,
+     365,
+     280
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Stamp duty",
+    "box": [
+     131,
+     232,
+     215,
+     245
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Adjudication has been sought under section 13 of the Stamp Duty Ordinance. This counterpart is not to be relied",
+    "box": [
+     131,
+     253,
+     850,
+     265
+    ]
+   },
+   {
+    "label": "text",
+    "text": "on as evidence of title until stamped.",
+    "box": [
+     131,
+     268,
+     365,
+     280
+    ]
+   },
+   {
+    "label": "text",
+    "text": "EXECUTED AS A DEED by the parties on the date first written above.",
+    "box": [
+     121,
+     324,
+     609,
+     339
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     121,
+     364,
+     162,
+     375
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     116,
+     379,
+     314,
+     418
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Imogen T. Ardwick",
+    "box": [
+     121,
+     427,
+     250,
+     440
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Director, Ardwick & Noll Trading Limited",
+    "box": [
+     121,
+     441,
+     363,
+     453
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     532,
+     364,
+     573,
+     375
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     527,
+     379,
+     725,
+     418
+    ]
+   },
+   {
+    "label": "text",
+    "text": "R. S. Pellmore",
+    "box": [
+     532,
+     427,
+     629,
+     440
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Director, Pellmore Holdings (Asia) Limited",
+    "box": [
+     532,
+     441,
+     786,
+     453
+    ]
+   },
+   {
+    "label": "text",
+    "text": "In the presence of",
+    "box": [
+     121,
+     472,
+     230,
+     484
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     121,
+     495,
+     162,
+     506
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     116,
+     511,
+     314,
+     549
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Amara Baptiste-Rowe",
+    "box": [
+     121,
+     558,
+     271,
+     571
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Solicitor, Quennell Vasseur LLP",
+    "box": [
+     121,
+     572,
+     313,
+     584
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Address: 31/F, Lyndhurst House, 4 Aberdeen Street, Central",
+    "box": [
+     121,
+     581,
+     484,
+     593
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Occupation: Solicitor of the High Court",
+    "box": [
+     121,
+     596,
+     353,
+     608
+    ]
+   },
+   {
+    "label": "seal",
+    "text": "QUENNELL VASSEUR LLP 11 FEB 2026",
+    "box": [
+     564,
+     517,
+     735,
+     638
+    ]
+   },
+   {
+    "label": "seal",
+    "text": "NOTARIAL SEAL",
+    "box": [
+     757,
+     375,
+     894,
+     472
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Page 2 of 2",
+    "box": [
+     815,
+     963,
+     879,
+     975
+    ]
+   }
+  ],
+  [
+   {
+    "label": "title",
+    "text": "EXHIBIT \"C\"",
+    "box": [
+     408,
+     456,
+     592,
+     481
+    ]
+   },
+   {
+    "label": "title",
+    "text": "Correspondence, 2024 to 2025",
+    "box": [
+     390,
+     488,
+     610,
+     503
+    ]
+   }
+  ]
+ ]
+}

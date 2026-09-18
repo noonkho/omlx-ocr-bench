@@ -1,0 +1,617 @@
+{
+ "file": "commercial_invoice.pdf",
+ "pages": [
+  [
+   {
+    "label": "image",
+    "text": "",
+    "box": [
+     64,
+     40,
+     114,
+     75
+    ]
+   },
+   {
+    "label": "title",
+    "text": "MERIDIAN",
+    "box": [
+     127,
+     44,
+     247,
+     66
+    ]
+   },
+   {
+    "label": "text",
+    "text": "SHIPPING & LOGISTICS",
+    "box": [
+     128,
+     64,
+     265,
+     75
+    ]
+   },
+   {
+    "label": "text",
+    "text": "INVOICE",
+    "box": [
+     709,
+     42,
+     842,
+     71
+    ]
+   },
+   {
+    "label": "text",
+    "text": "No. MS-2026-0417",
+    "box": [
+     709,
+     71,
+     845,
+     85
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Issued 14 March 2026",
+    "box": [
+     709,
+     87,
+     869,
+     101
+    ]
+   },
+   {
+    "label": "text",
+    "text": "BILL TO",
+    "box": [
+     64,
+     114,
+     114,
+     125
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Harbourline Freight Limited",
+    "box": [
+     64,
+     129,
+     258,
+     143
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Unit 2203, Kwai Chung Plaza",
+    "box": [
+     64,
+     145,
+     272,
+     159
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Kwai Chung, New Territories",
+    "box": [
+     64,
+     161,
+     268,
+     175
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Hong Kong SAR",
+    "box": [
+     64,
+     177,
+     181,
+     191
+    ]
+   },
+   {
+    "label": "text",
+    "text": "SHIP TO",
+    "box": [
+     532,
+     114,
+     583,
+     125
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Meridian Bonded Warehouse 4",
+    "box": [
+     532,
+     129,
+     753,
+     143
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Lot 88, Tuen Mun Area 38",
+    "box": [
+     532,
+     145,
+     720,
+     159
+    ]
+   },
+   {
+    "label": "text",
+    "text": "New Territories",
+    "box": [
+     532,
+     161,
+     641,
+     175
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Hong Kong SAR",
+    "box": [
+     532,
+     177,
+     649,
+     191
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Description",
+    "box": [
+     72,
+     215,
+     160,
+     230
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Qty",
+    "box": [
+     571,
+     215,
+     599,
+     230
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Unit",
+    "box": [
+     652,
+     215,
+     683,
+     230
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Amount (HKD)",
+    "box": [
+     797,
+     215,
+     907,
+     230
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Ocean freight, 40ft HC, SHA-HKG",
+    "box": [
+     72,
+     238,
+     316,
+     252
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3",
+    "box": [
+     571,
+     238,
+     580,
+     252
+    ]
+   },
+   {
+    "label": "text",
+    "text": "8,400.00",
+    "box": [
+     652,
+     238,
+     715,
+     252
+    ]
+   },
+   {
+    "label": "text",
+    "text": "25,200.00",
+    "box": [
+     797,
+     238,
+     869,
+     252
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Terminal handling, origin",
+    "box": [
+     72,
+     261,
+     247,
+     275
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3",
+    "box": [
+     571,
+     261,
+     580,
+     275
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1,150.00",
+    "box": [
+     652,
+     261,
+     715,
+     275
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3,450.00",
+    "box": [
+     797,
+     261,
+     860,
+     275
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Customs entry, bonded",
+    "box": [
+     72,
+     284,
+     239,
+     298
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1",
+    "box": [
+     571,
+     284,
+     580,
+     298
+    ]
+   },
+   {
+    "label": "text",
+    "text": "2,700.00",
+    "box": [
+     652,
+     284,
+     715,
+     298
+    ]
+   },
+   {
+    "label": "text",
+    "text": "2,700.00",
+    "box": [
+     797,
+     284,
+     860,
+     298
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Documentation fee",
+    "box": [
+     72,
+     307,
+     207,
+     321
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1",
+    "box": [
+     571,
+     307,
+     580,
+     321
+    ]
+   },
+   {
+    "label": "text",
+    "text": "480.00",
+    "box": [
+     652,
+     307,
+     701,
+     321
+    ]
+   },
+   {
+    "label": "text",
+    "text": "480.00",
+    "box": [
+     797,
+     307,
+     846,
+     321
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Description Qty Unit Amount (HKD) Ocean freight, 40ft HC, SHA-HKG 3 8,400.00 25,200.00 Terminal handling, origin 3 1,150.00 3,450.00 Customs entry, bonded 1 2,700.00 2,700.00 Documentation fee 1 480.00 480.00",
+    "box": [
+     64,
+     211,
+     967,
+     325
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Subtotal",
+    "box": [
+     636,
+     341,
+     695,
+     355
+    ]
+   },
+   {
+    "label": "text",
+    "text": "31,830.00",
+    "box": [
+     813,
+     341,
+     885,
+     355
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Levy 0.5%",
+    "box": [
+     636,
+     364,
+     712,
+     378
+    ]
+   },
+   {
+    "label": "text",
+    "text": "159.15",
+    "box": [
+     813,
+     364,
+     862,
+     378
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Total due",
+    "box": [
+     636,
+     386,
+     703,
+     401
+    ]
+   },
+   {
+    "label": "text",
+    "text": "31,989.15",
+    "box": [
+     813,
+     386,
+     885,
+     401
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Subtotal 31,830.00 Levy 0.5% 159.15 Total due 31,989.15",
+    "box": [
+     629,
+     336,
+     967,
+     405
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Net 30 days from the date of issue. Late settlement carries interest at 1%",
+    "box": [
+     74,
+     452,
+     542,
+     465
+    ]
+   },
+   {
+    "label": "text",
+    "text": "per month. Quote the invoice number on every remittance.",
+    "box": [
+     74,
+     467,
+     449,
+     480
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Payment terms",
+    "box": [
+     74,
+     431,
+     185,
+     445
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Net 30 days from the date of issue. Late settlement carries interest at 1%",
+    "box": [
+     74,
+     452,
+     542,
+     465
+    ]
+   },
+   {
+    "label": "text",
+    "text": "per month. Quote the invoice number on every remittance.",
+    "box": [
+     74,
+     467,
+     449,
+     480
+    ]
+   },
+   {
+    "label": "image",
+    "text": "MS 2026 0417 3",
+    "box": [
+     64,
+     672,
+     306,
+     709
+    ]
+   },
+   {
+    "label": "text",
+    "text": "MS 2026 0417 3",
+    "box": [
+     64,
+     712,
+     177,
+     724
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     64,
+     758,
+     106,
+     769
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     60,
+     774,
+     258,
+     813
+    ]
+   },
+   {
+    "label": "text",
+    "text": "K. W. Ladipo",
+    "box": [
+     64,
+     822,
+     152,
+     834
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Finance Director, Meridian Shipping",
+    "box": [
+     64,
+     835,
+     280,
+     847
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     532,
+     758,
+     573,
+     769
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     527,
+     774,
+     725,
+     813
+    ]
+   },
+   {
+    "label": "text",
+    "text": "V. Thorbecke",
+    "box": [
+     532,
+     822,
+     623,
+     834
+    ]
+   },
+   {
+    "label": "text",
+    "text": "For Harbourline Freight Limited",
+    "box": [
+     532,
+     835,
+     719,
+     847
+    ]
+   },
+   {
+    "label": "seal",
+    "text": "PAID 14 MAR 2026",
+    "box": [
+     669,
+     672,
+     827,
+     784
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Meridian Shipping & Logistics Limited · BR 61234567-000 · meridian.example · +852 2555 0100",
+    "box": [
+     64,
+     946,
+     565,
+     957
+    ]
+   }
+  ]
+ ]
+}

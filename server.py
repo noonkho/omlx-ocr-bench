@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Three-panel Unlimited-OCR bench. `uv run server.py` then open http://127.0.0.1:4700
+"""Three-panel OCR bench for oMLX. `uv run server.py` then open http://127.0.0.1:4700
 
 Left: server, prompt, sampling knobs and a drop zone. Middle: the document as it really is.
 Right: what the model returned — raw, rendered, or drawn back onto the page as layout boxes.
@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 import config
 import ocr
+import score
 from ocr import (BLANK_INK, COLOURS, JUNK, build_body, data_url, http_detail, ink,
                  parse, render_pages, request)
 
@@ -249,8 +250,11 @@ class Handler(BaseHTTPRequestHandler):
                   "blank": ink(png) < BLANK_INK}
                  for i, (png, size) in enumerate(rendered)]
         job = uuid.uuid4().hex
-        JOBS[job] = {"name": name, "pages": pages, "dpi": dpi, "at": time.time()}
-        self._json(200, {"ok": True, "job": job, "name": name, "dpi": dpi, "pages": pages})
+        truth = answer_key(name)
+        JOBS[job] = {"name": name, "pages": pages, "dpi": dpi, "at": time.time(),
+                     "truth": truth}
+        self._json(200, {"ok": True, "job": job, "name": name, "dpi": dpi, "pages": pages,
+                         "scored": bool(truth)})
 
     # ---------------------------------------------------------------- the run
     def stream(self, q: dict) -> None:
@@ -305,7 +309,9 @@ class Handler(BaseHTTPRequestHandler):
         # pays the whole token cap for it. In whole-document mode the blanks simply do not go.
         groups = [[u for u, b in zip(urls, blanks) if not b]] if whole else \
                  [[] if b else [u] for u, b in zip(urls, blanks)]
+        self.scores = []
         emit("start", {"pages": len(urls), "requests": sum(1 for g in groups if g),
+                       "scored": bool(meta.get("truth")),
                        "blank": sum(blanks), "model": model,
                        "prompt": prompt, "mode": "whole" if whole else "page", "knobs": knobs})
 
@@ -319,12 +325,18 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             if not emit("page_start", {"index": i, "images": len(group)}):
                 return
-            if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard):
+            if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard,
+                                meta.get("truth") or []):
                 return
-        emit("done", {"seconds": round(time.time() - run_t0, 2)})
+        emit("done", {"seconds": round(time.time() - run_t0, 2),
+                      "score": score.combine(self.scores) if self.scores else None,
+                      "model": model})
+
+    #: One entry per finished unit, so the run can report a score for the whole document.
+    scores: list[dict] = []
 
     def run_one(self, index: int, images: list[str], emit, base: str, key: str, model: str,
-                prompt: str, knobs: dict, guard: bool) -> bool:
+                prompt: str, knobs: dict, guard: bool, truth: list[list[dict]]) -> bool:
         """One request, streamed. Returns False if the browser has gone and the run should stop."""
         watch = RepeatWatch()
         pulse = {"at": 0.0, "chars": 0, "closed": False}
@@ -369,7 +381,12 @@ class Handler(BaseHTTPRequestHandler):
             # and flagged: the guard exists to save tokens, not to hide the page from the user.
             finish = finish or "aborted_runaway"
         blocks = parse(text) if text else []
+        page_truth = truth[index] if index < len(truth) else []
+        marks = score.score_page(as_json(blocks), page_truth) if page_truth else None
+        if marks:
+            self.scores.append(marks)
         return emit("page", {
+            "score": marks,
             "index": index, "seconds": round(time.time() - t0, 2), "error": err, "finish": finish,
             "runaway": runaway, "raw": text, "usage": usage, "images": len(images),
             "blocks": as_json(blocks)})
@@ -386,12 +403,24 @@ def prune(now: float | None = None) -> None:
 
 
 def as_json(blocks) -> list[dict]:
-    return [{"label": b.label, "box": list(b.box), "content": b.content} for b in blocks]
+    return [{"label": b.label, "box": list(b.box), "content": b.content, "boxed": b.boxed}
+            for b in blocks]
+
+
+def answer_key(name: str) -> list[list[dict]]:
+    """The drawn sample's answer key, if this document is one of ours."""
+    path = HERE / "samples" / "truth" / (Path(name).stem + ".json")
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text()).get("pages") or []
+    except Exception:                                               # noqa: BLE001
+        return []
 
 
 def main() -> int:
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Unlimited-OCR bench  ->  http://127.0.0.1:{PORT}")
+    print(f"OCR bench for oMLX  ->  http://127.0.0.1:{PORT}")
     print(f"  default server: {config.BASE_URL}  model: {config.MODEL}")
     try:
         srv.serve_forever()

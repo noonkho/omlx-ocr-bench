@@ -1,0 +1,717 @@
+{
+ "file": "school_transcript.pdf",
+ "pages": [
+  [
+   {
+    "label": "image",
+    "text": "KH",
+    "box": [
+     451,
+     35,
+     525,
+     95
+    ]
+   },
+   {
+    "label": "title",
+    "text": "KESTREL HOUSE SCHOOL",
+    "box": [
+     333,
+     104,
+     667,
+     126
+    ]
+   },
+   {
+    "label": "title",
+    "text": "Founded 1911 · 40 Ivyhurst Road, Branwell BR3 2LE",
+    "box": [
+     329,
+     129,
+     671,
+     142
+    ]
+   },
+   {
+    "label": "title",
+    "text": "OFFICIAL ACADEMIC TRANSCRIPT",
+    "box": [
+     336,
+     166,
+     664,
+     183
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Student",
+    "box": [
+     72,
+     201,
+     127,
+     215
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Tobiah N. Arkwright-Mensah",
+    "box": [
+     217,
+     201,
+     421,
+     215
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Student number",
+    "box": [
+     563,
+     201,
+     678,
+     215
+    ]
+   },
+   {
+    "label": "text",
+    "text": "KH-2021-0388",
+    "box": [
+     741,
+     201,
+     844,
+     215
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Date of birth",
+    "box": [
+     72,
+     225,
+     160,
+     239
+    ]
+   },
+   {
+    "label": "text",
+    "text": "14 September 2008",
+    "box": [
+     217,
+     225,
+     359,
+     239
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Year group",
+    "box": [
+     563,
+     225,
+     643,
+     239
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Upper Sixth",
+    "box": [
+     741,
+     225,
+     824,
+     239
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Programme",
+    "box": [
+     72,
+     249,
+     156,
+     263
+    ]
+   },
+   {
+    "label": "text",
+    "text": "A Level, three subjects",
+    "box": [
+     217,
+     249,
+     380,
+     263
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Issued",
+    "box": [
+     563,
+     249,
+     611,
+     263
+    ]
+   },
+   {
+    "label": "text",
+    "text": "26 June 2026",
+    "box": [
+     741,
+     249,
+     838,
+     263
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Student Tobiah N. Arkwright-Mensah Student number KH-2021-0388 Date of birth 14 September 2008 Year group Upper Sixth Programme A Level, three subjects Issued 26 June 2026",
+    "box": [
+     64,
+     196,
+     936,
+     268
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Results",
+    "box": [
+     64,
+     286,
+     127,
+     302
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Subject",
+    "box": [
+     72,
+     313,
+     128,
+     326
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Code",
+    "box": [
+     410,
+     313,
+     450,
+     326
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Grade",
+    "box": [
+     539,
+     313,
+     584,
+     326
+    ]
+   },
+   {
+    "label": "text",
+    "text": "UMS",
+    "box": [
+     644,
+     313,
+     678,
+     326
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Session",
+    "box": [
+     805,
+     313,
+     865,
+     326
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Mathematics",
+    "box": [
+     72,
+     335,
+     160,
+     349
+    ]
+   },
+   {
+    "label": "text",
+    "text": "9MA0",
+    "box": [
+     410,
+     335,
+     451,
+     349
+    ]
+   },
+   {
+    "label": "text",
+    "text": "A*",
+    "box": [
+     539,
+     335,
+     555,
+     349
+    ]
+   },
+   {
+    "label": "text",
+    "text": "276 / 300",
+    "box": [
+     644,
+     335,
+     709,
+     349
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Summer 2026",
+    "box": [
+     805,
+     335,
+     903,
+     349
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Physics",
+    "box": [
+     72,
+     358,
+     127,
+     372
+    ]
+   },
+   {
+    "label": "text",
+    "text": "9PH0",
+    "box": [
+     410,
+     358,
+     450,
+     372
+    ]
+   },
+   {
+    "label": "text",
+    "text": "A",
+    "box": [
+     539,
+     358,
+     550,
+     372
+    ]
+   },
+   {
+    "label": "text",
+    "text": "252 / 300",
+    "box": [
+     644,
+     358,
+     709,
+     372
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Summer 2026",
+    "box": [
+     805,
+     358,
+     903,
+     372
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Design & Technology",
+    "box": [
+     72,
+     381,
+     222,
+     394
+    ]
+   },
+   {
+    "label": "text",
+    "text": "9DT0",
+    "box": [
+     410,
+     381,
+     449,
+     394
+    ]
+   },
+   {
+    "label": "text",
+    "text": "A",
+    "box": [
+     539,
+     381,
+     550,
+     394
+    ]
+   },
+   {
+    "label": "text",
+    "text": "248 / 300",
+    "box": [
+     644,
+     381,
+     709,
+     394
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Summer 2026",
+    "box": [
+     805,
+     381,
+     903,
+     394
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Extended Project",
+    "box": [
+     72,
+     404,
+     191,
+     417
+    ]
+   },
+   {
+    "label": "text",
+    "text": "7993",
+    "box": [
+     410,
+     404,
+     446,
+     417
+    ]
+   },
+   {
+    "label": "text",
+    "text": "B",
+    "box": [
+     539,
+     404,
+     550,
+     417
+    ]
+   },
+   {
+    "label": "text",
+    "text": "42 / 50",
+    "box": [
+     644,
+     404,
+     691,
+     417
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Autumn 2025",
+    "box": [
+     805,
+     404,
+     898,
+     417
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Subject Code Grade UMS Session Mathematics 9MA0 A* 276 / 300 Summer 2026 Physics 9PH0 A 252 / 300 Summer 2026 Design & Technology 9DT0 A 248 / 300 Summer 2026 Extended Project 7993 B 42 / 50 Autumn 2025",
+    "box": [
+     64,
+     308,
+     936,
+     422
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Overall",
+    "box": [
+     72,
+     438,
+     121,
+     451
+    ]
+   },
+   {
+    "label": "text",
+    "text": "",
+    "box": [
+     410,
+     438,
+     410,
+     451
+    ]
+   },
+   {
+    "label": "text",
+    "text": "AAA*",
+    "box": [
+     539,
+     438,
+     576,
+     451
+    ]
+   },
+   {
+    "label": "text",
+    "text": "",
+    "box": [
+     644,
+     438,
+     644,
+     451
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Rank 4 of 118",
+    "box": [
+     805,
+     438,
+     902,
+     451
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Overall  AAA*  Rank 4 of 118",
+    "box": [
+     64,
+     433,
+     936,
+     456
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Form tutor's remarks",
+    "box": [
+     64,
+     476,
+     227,
+     491
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Tobiah has been an exceptional student of the sciences and a patient collaborator in the workshop. The extended project, on passive",
+    "box": [
+     64,
+     497,
+     925,
+     511
+    ]
+   },
+   {
+    "label": "text",
+    "text": "cooling in school buildings, was presented to the governors in March and is held in the library. He leaves with our warm regards and",
+    "box": [
+     64,
+     514,
+     932,
+     528
+    ]
+   },
+   {
+    "label": "text",
+    "text": "a place confirmed to read engineering.",
+    "box": [
+     64,
+     531,
+     317,
+     545
+    ]
+   },
+   {
+    "label": "text",
+    "text": "This transcript is issued directly by the school. Any copy not bearing the",
+    "box": [
+     74,
+     588,
+     533,
+     600
+    ]
+   },
+   {
+    "label": "text",
+    "text": "embossed seal and the registrar's signature should be treated as unverified.",
+    "box": [
+     74,
+     603,
+     561,
+     615
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Queries: registrar@kestrelhouse.example",
+    "box": [
+     74,
+     618,
+     342,
+     630
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Verification",
+    "box": [
+     74,
+     567,
+     158,
+     580
+    ]
+   },
+   {
+    "label": "text",
+    "text": "This transcript is issued directly by the school. Any copy not bearing the",
+    "box": [
+     74,
+     588,
+     533,
+     600
+    ]
+   },
+   {
+    "label": "text",
+    "text": "embossed seal and the registrar's signature should be treated as unverified.",
+    "box": [
+     74,
+     603,
+     561,
+     615
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Queries: registrar@kestrelhouse.example",
+    "box": [
+     74,
+     618,
+     342,
+     630
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     64,
+     798,
+     106,
+     809
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     60,
+     814,
+     258,
+     852
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Perpetua Saoirse Blackwood",
+    "box": [
+     64,
+     862,
+     263,
+     874
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Registrar",
+    "box": [
+     64,
+     875,
+     120,
+     887
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     500,
+     798,
+     541,
+     809
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     495,
+     814,
+     693,
+     852
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Dr N. A. Okonkwo-Reilly",
+    "box": [
+     500,
+     862,
+     666,
+     874
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Head Teacher",
+    "box": [
+     500,
+     875,
+     584,
+     887
+    ]
+   },
+   {
+    "label": "seal",
+    "text": "KESTREL HOUSE SCHOOL",
+    "box": [
+     790,
+     775,
+     936,
+     879
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Page 1 of 1 · Transcript reference KH/TR/2026/0388",
+    "box": [
+     64,
+     952,
+     335,
+     963
+    ]
+   }
+  ]
+ ]
+}

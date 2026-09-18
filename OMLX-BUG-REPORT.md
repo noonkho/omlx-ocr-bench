@@ -37,7 +37,7 @@ side this reads as a bug rather than an unsupported feature.
 | | |
 |---|---|
 | oMLX | 0.6.4 (the .dmg app) |
-| Host | Mac Studio, M3 Ultra, 200 GB |
+| Host | Apple Silicon Mac (M3 generation) |
 | Model | `Unlimited-OCR-bf16` (an MLX conversion of `baidu/Unlimited-OCR`) |
 | Client | plain `urllib` POST to `/v1/chat/completions` |
 
@@ -151,7 +151,7 @@ guard is on and this page still loops" and "the guard was never applied".
 | | |
 |---|---|
 | oMLX | 0.6.4 (the .dmg app) |
-| Host | Mac Studio, M3 Ultra, 200 GB |
+| Host | Apple Silicon Mac (M3 generation) |
 | Model | `Unlimited-OCR-bf16` |
 
 ## Evidence

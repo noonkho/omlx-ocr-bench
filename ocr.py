@@ -98,6 +98,9 @@ class Block:
     label: str
     box: tuple[int, int, int, int]      # 0-1000 normalised
     content: str = ""
+    #: False when the model gave no coordinates and the box is a stand-in for the whole page.
+    #: Scoring must not credit such a block with placing anything.
+    boxed: bool = True
 
     def pixels(self, w: int, h: int) -> tuple[int, int, int, int]:
         x0, y0, x1, y1 = self.box
@@ -124,7 +127,28 @@ class PageResult:
 
 
 def parse(raw: str) -> list[Block]:
-    """`<|det|>` markers into blocks. Text before the first marker is kept as an unlabelled block.
+    """Whatever an OCR model returned, as blocks. Three formats, tried in order.
+
+    1. `<|det|>LABEL [x0, y0, x1, y1]<|/det|>` markers — Unlimited-OCR and its relatives.
+    2. A JSON list of `{"bbox": [...], "category": ..., "text": ...}` — dots.ocr, PaddleOCR-VL
+       and most of the layout-first models. Pixel boxes are rescaled to 0-1000 when they are
+       plainly out of range.
+    3. Plain markdown, which many models return with no coordinates at all. Those blocks are
+       marked `boxed=False`, so the bench scores their words and reports no position.
+
+    Text before the first marker is kept as its own block and flagged — see below.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+    if _DET.search(raw):
+        return _parse_det(raw)
+    blocks = _parse_json(raw)
+    return blocks if blocks else _parse_markdown(raw)
+
+
+def _parse_det(raw: str) -> list[Block]:
+    """The `<|det|>` format.
 
     The model sometimes emits the SAME block twice in a row (seen on a stamp). Consecutive exact
     duplicates are collapsed — a repeated read is one fact, and counting it twice would make a
@@ -132,8 +156,6 @@ def parse(raw: str) -> list[Block]:
     """
     out: list[Block] = []
     marks = list(_DET.finditer(raw))
-    if not marks:
-        return [Block("text", (0, 0, 1000, 1000), raw.strip())] if raw.strip() else []
 
     preamble = raw[:marks[0].start()].strip()
     if preamble:
@@ -157,6 +179,57 @@ def parse(raw: str) -> list[Block]:
         if out and out[-1].label == block.label and out[-1].content == block.content:
             continue                                     # the same read, twice
         out.append(block)
+    return out
+
+
+def _parse_json(raw: str) -> list[Block]:
+    """A JSON list of regions, the shape most layout-first OCR models return."""
+    start, end = raw.find("["), raw.rfind("]")
+    if start < 0 or end < start:
+        return []
+    try:
+        items = json.loads(raw[start:end + 1])
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(items, list) or not items or not isinstance(items[0], dict):
+        return []
+
+    out: list[Block] = []
+    for item in items:
+        box = item.get("bbox") or item.get("box") or item.get("boundingBox")
+        content = item.get("text") or item.get("content") or item.get("caption") or ""
+        label = str(item.get("category") or item.get("label") or item.get("type") or "text")
+        if not isinstance(box, (list, tuple)) or len(box) != 4:
+            out.append(Block(label.lower(), (0, 0, 1000, 1000), str(content), boxed=False))
+            continue
+        nums = [float(n) for n in box]
+        if max(nums) > 1000:                 # pixels, not the 0-1000 space this bench works in
+            nums = _to_thousandths(nums, items)
+        out.append(Block(label.lower(), tuple(round(n) for n in nums),  # type: ignore[arg-type]
+                         str(content)))
+    return out
+
+
+def _to_thousandths(box: list[float], items: list[dict]) -> list[float]:
+    """Rescale pixel coordinates using the largest box the model itself reported as the page."""
+    widest = 1.0
+    for item in items:
+        other = item.get("bbox") or item.get("box") or item.get("boundingBox")
+        if isinstance(other, (list, tuple)) and len(other) == 4:
+            widest = max(widest, float(other[2]), float(other[3]))
+    return [n * 1000 / widest for n in box]
+
+
+def _parse_markdown(raw: str) -> list[Block]:
+    """No coordinates at all. Paragraphs, and an honest `boxed=False` on each."""
+    out: list[Block] = []
+    for chunk in re.split(r"\n\s*\n", raw):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        label = "title" if chunk.startswith("#") else "table" if chunk.startswith("<table") \
+            else "noise" if _COUNTER.match(chunk) or _LEAK.search(chunk) else "text"
+        out.append(Block(label, (0, 0, 1000, 1000), chunk.lstrip("# ").strip(), boxed=False))
     return out
 
 

@@ -1,0 +1,707 @@
+{
+ "file": "gov_permit.pdf",
+ "pages": [
+  [
+   {
+    "label": "image",
+    "text": "BC",
+    "box": [
+     64,
+     38,
+     139,
+     97
+    ]
+   },
+   {
+    "label": "text",
+    "text": "BRANWELL COUNTY COUNCIL",
+    "box": [
+     161,
+     42,
+     500,
+     62
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Licensing and Environmental Health Service",
+    "box": [
+     162,
+     63,
+     469,
+     76
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Marden Civic Offices, 2 Halloway Row, Branwell BR1 4QA",
+    "box": [
+     162,
+     79,
+     496,
+     90
+    ]
+   },
+   {
+    "label": "title",
+    "text": "PREMISES LICENCE",
+    "box": [
+     364,
+     122,
+     636,
+     146
+    ]
+   },
+   {
+    "label": "title",
+    "text": "Issued under the Licensing Act 2003, Part 3",
+    "box": [
+     349,
+     147,
+     651,
+     161
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Licence number",
+    "box": [
+     72,
+     182,
+     186,
+     197
+    ]
+   },
+   {
+    "label": "text",
+    "text": "PRM/2026/04417",
+    "box": [
+     313,
+     182,
+     438,
+     197
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Premises",
+    "box": [
+     72,
+     207,
+     139,
+     222
+    ]
+   },
+   {
+    "label": "text",
+    "text": "The Wheelwright's Arms, 14 Stallard Lane, Branwell BR2 7NX",
+    "box": [
+     313,
+     207,
+     755,
+     222
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Licence holder",
+    "box": [
+     72,
+     232,
+     176,
+     247
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Dunleavy Hospitality Group Limited (company no. 09841277)",
+    "box": [
+     313,
+     232,
+     749,
+     247
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Designated supervisor",
+    "box": [
+     72,
+     258,
+     231,
+     272
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Marguerite O. Falkenrath",
+    "box": [
+     313,
+     258,
+     494,
+     272
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Issued",
+    "box": [
+     72,
+     283,
+     119,
+     297
+    ]
+   },
+   {
+    "label": "text",
+    "text": "03 March 2026",
+    "box": [
+     313,
+     283,
+     421,
+     297
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Expires",
+    "box": [
+     72,
+     308,
+     125,
+     322
+    ]
+   },
+   {
+    "label": "text",
+    "text": "02 March 2027",
+    "box": [
+     313,
+     308,
+     421,
+     322
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Licence number PRM/2026/04417 Premises The Wheelwright's Arms, 14 Stallard Lane, Branwell BR2 7NX Licence holder Dunleavy Hospitality Group Limited (company no. 09841277) Designated supervisor Marguerite O. Falkenrath Issued 03 March 2026 Expires 02 March 2027",
+    "box": [
+     64,
+     177,
+     936,
+     327
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Licensable activities and permitted hours",
+    "box": [
+     64,
+     346,
+     406,
+     362
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Activity",
+    "box": [
+     72,
+     373,
+     124,
+     386
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Monday to Thursday",
+    "box": [
+     346,
+     373,
+     488,
+     386
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Friday and Saturday",
+    "box": [
+     555,
+     373,
+     695,
+     386
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Sunday",
+    "box": [
+     765,
+     373,
+     817,
+     386
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Sale of alcohol, on sales",
+    "box": [
+     72,
+     396,
+     229,
+     409
+    ]
+   },
+   {
+    "label": "text",
+    "text": "11:00 – 23:00",
+    "box": [
+     346,
+     396,
+     434,
+     409
+    ]
+   },
+   {
+    "label": "text",
+    "text": "11:00 – 00:30",
+    "box": [
+     555,
+     396,
+     644,
+     409
+    ]
+   },
+   {
+    "label": "text",
+    "text": "12:00 – 22:30",
+    "box": [
+     765,
+     396,
+     853,
+     409
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Recorded music, indoors",
+    "box": [
+     72,
+     419,
+     232,
+     432
+    ]
+   },
+   {
+    "label": "text",
+    "text": "11:00 – 23:00",
+    "box": [
+     346,
+     419,
+     434,
+     432
+    ]
+   },
+   {
+    "label": "text",
+    "text": "11:00 – 00:30",
+    "box": [
+     555,
+     419,
+     644,
+     432
+    ]
+   },
+   {
+    "label": "text",
+    "text": "12:00 – 22:30",
+    "box": [
+     765,
+     419,
+     853,
+     432
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Live music, indoors",
+    "box": [
+     72,
+     442,
+     196,
+     454
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Not permitted",
+    "box": [
+     346,
+     442,
+     433,
+     454
+    ]
+   },
+   {
+    "label": "text",
+    "text": "19:00 – 23:00",
+    "box": [
+     555,
+     442,
+     644,
+     454
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Not permitted",
+    "box": [
+     765,
+     442,
+     852,
+     454
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Late night refreshment",
+    "box": [
+     72,
+     464,
+     217,
+     477
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Not permitted",
+    "box": [
+     346,
+     464,
+     433,
+     477
+    ]
+   },
+   {
+    "label": "text",
+    "text": "23:00 – 00:30",
+    "box": [
+     555,
+     464,
+     644,
+     477
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Not permitted",
+    "box": [
+     765,
+     464,
+     852,
+     477
+    ]
+   },
+   {
+    "label": "table",
+    "text": "Activity Monday to Thursday Friday and Saturday Sunday Sale of alcohol, on sales 11:00 – 23:00 11:00 – 00:30 12:00 – 22:30 Recorded music, indoors 11:00 – 23:00 11:00 – 00:30 12:00 – 22:30 Live music, indoors Not permitted 19:00 – 23:00 Not permitted Late night refreshment Not permitted 23:00 – 00:30 Not permitted",
+    "box": [
+     64,
+     368,
+     936,
+     482
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1. A digital CCTV system shall be operated at all times the premises are",
+    "box": [
+     74,
+     526,
+     536,
+     539
+    ]
+   },
+   {
+    "label": "text",
+    "text": "open.",
+    "box": [
+     74,
+     541,
+     110,
+     554
+    ]
+   },
+   {
+    "label": "text",
+    "text": "2. No drinks in open glass containers shall leave the premises.",
+    "box": [
+     74,
+     556,
+     475,
+     568
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3. A refusals log shall be kept and produced on request by a constable.",
+    "box": [
+     74,
+     571,
+     530,
+     583
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Conditions attached",
+    "box": [
+     74,
+     505,
+     224,
+     519
+    ]
+   },
+   {
+    "label": "text",
+    "text": "1. A digital CCTV system shall be operated at all times the premises are",
+    "box": [
+     74,
+     526,
+     536,
+     539
+    ]
+   },
+   {
+    "label": "text",
+    "text": "open.",
+    "box": [
+     74,
+     541,
+     110,
+     554
+    ]
+   },
+   {
+    "label": "text",
+    "text": "2. No drinks in open glass containers shall leave the premises.",
+    "box": [
+     74,
+     556,
+     475,
+     568
+    ]
+   },
+   {
+    "label": "text",
+    "text": "3. A refusals log shall be kept and produced on request by a constable.",
+    "box": [
+     74,
+     571,
+     530,
+     583
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Q1",
+    "box": [
+     680,
+     617,
+     696,
+     627
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Q2",
+    "box": [
+     735,
+     617,
+     751,
+     627
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Q3",
+    "box": [
+     790,
+     617,
+     806,
+     627
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Q4",
+    "box": [
+     844,
+     617,
+     861,
+     627
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Q5",
+    "box": [
+     899,
+     617,
+     915,
+     627
+    ]
+   },
+   {
+    "label": "image",
+    "text": "Complaints received, by quarter",
+    "box": [
+     612,
+     501,
+     935,
+     638
+    ]
+   },
+   {
+    "label": "caption",
+    "text": "Complaints received, by quarter",
+    "box": [
+     625,
+     507,
+     820,
+     519
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Figure 1 — Noise complaints, this ward.",
+    "box": [
+     612,
+     644,
+     840,
+     655
+    ]
+   },
+   {
+    "label": "text",
+    "text": "The holder shall notify the Service in writing within fourteen days of any change to the designated premises supervisor, and",
+    "box": [
+     64,
+     685,
+     912,
+     698
+    ]
+   },
+   {
+    "label": "text",
+    "text": "shall surrender this licence for endorsement. A copy of the plan deposited with the application is held under the same",
+    "box": [
+     64,
+     701,
+     870,
+     714
+    ]
+   },
+   {
+    "label": "text",
+    "text": "reference.",
+    "box": [
+     64,
+     717,
+     135,
+     730
+    ]
+   },
+   {
+    "label": "image",
+    "text": "PRM 2026 04417 8",
+    "box": [
+     64,
+     767,
+     306,
+     803
+    ]
+   },
+   {
+    "label": "text",
+    "text": "PRM 2026 04417 8",
+    "box": [
+     64,
+     807,
+     193,
+     819
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Signed",
+    "box": [
+     532,
+     759,
+     573,
+     770
+    ]
+   },
+   {
+    "label": "signature",
+    "text": "",
+    "box": [
+     527,
+     775,
+     725,
+     814
+    ]
+   },
+   {
+    "label": "text",
+    "text": "H. Osafo-Lindqvist",
+    "box": [
+     532,
+     823,
+     661,
+     836
+    ]
+   },
+   {
+    "label": "text",
+    "text": "Head of Licensing, Branwell County Council",
+    "box": [
+     532,
+     836,
+     795,
+     849
+    ]
+   },
+   {
+    "label": "seal",
+    "text": "BRANWELL COUNTY COUNCIL",
+    "box": [
+     338,
+     748,
+     500,
+     862
+    ]
+   },
+   {
+    "label": "text",
+    "text": "This licence must be displayed at the premises. It is an offence under section 136 of the Act to carry on a",
+    "box": [
+     64,
+     923,
+     655,
+     934
+    ]
+   },
+   {
+    "label": "text",
+    "text": "licensable activity otherwise than in accordance with it. Appeals lie to the magistrates' court within 21 days.",
+    "box": [
+     64,
+     938,
+     670,
+     949
+    ]
+   }
+  ]
+ ]
+}

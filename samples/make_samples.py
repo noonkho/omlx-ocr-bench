@@ -29,6 +29,13 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = Path(__file__).parent
+TRUTH_DIR = HERE / "truth"
+
+#: What is on the page being drawn, filled in as it is drawn: one entry per line of text and one
+#: per graphic. This is the whole reason to draw the samples rather than download them — it is the
+#: answer key the bench scores a model against. Boxes are 0-1000 normalised, like the model's own.
+TRUTH: list[dict] = []
+
 W, H = 1241, 1755                        # A4 at 150 dpi, matching the bench's default render
 INK, GREY, RED, BLUE = (26, 26, 26), (110, 110, 110), (178, 34, 34), (30, 60, 140)
 GREEN, GOLD = (24, 92, 60), (150, 118, 20)
@@ -44,6 +51,13 @@ FONTS = {
 }
 
 
+def note(label: str, x0, y0, x1, y1, body: str = "") -> None:
+    """Record one thing on the page, in the model's own 0-1000 coordinate space."""
+    TRUTH.append({"label": label, "text": body,
+                  "box": [round(x0 * 1000 / W), round(y0 * 1000 / H),
+                          round(x1 * 1000 / W), round(y1 * 1000 / H)]})
+
+
 def font(kind: str, size: int) -> ImageFont.FreeTypeFont:
     for path in FONTS[kind]:
         if Path(path).exists():
@@ -56,13 +70,20 @@ def page() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     return im, ImageDraw.Draw(im)
 
 
-def text(d, xy, s, kind="serif", size=22, fill=INK, **kw):
-    d.text(xy, s, font=font(kind, size), fill=fill, **kw)
-
-
-def centred(d, y, s, kind="serif_bold", size=30, fill=INK):
+def text(d, xy, s, kind="serif", size=22, fill=INK, label="text", **kw):
     f = font(kind, size)
-    d.text(((W - d.textlength(s, font=f)) / 2, y), s, font=f, fill=fill)
+    d.text(xy, s, font=f, fill=fill, **kw)
+    x, y = xy
+    if kw.get("anchor", "").startswith("r"):              # right-aligned, as on a page number
+        x -= d.textlength(s, font=f)
+    note(label, x, y, x + d.textlength(s, font=f), y + size * 1.25, s)
+
+
+def centred(d, y, s, kind="serif_bold", size=30, fill=INK, label="title"):
+    f = font(kind, size)
+    x = (W - d.textlength(s, font=f)) / 2
+    d.text((x, y), s, font=f, fill=fill)
+    note(label, x, y, x + d.textlength(s, font=f), y + size * 1.25, s)
 
 
 def paragraph(d, x, y, body, width=1080, size=21, kind="serif", leading=31, fill=INK) -> int:
@@ -76,18 +97,21 @@ def paragraph(d, x, y, body, width=1080, size=21, kind="serif", leading=31, fill
         trial = line + join + unit if line else unit
         if d.textlength(trial, font=f) > width and line:
             d.text((x, y), line, font=f, fill=fill)
+            note("text", x, y, x + d.textlength(line, font=f), y + size * 1.2, line)
             y += leading
             line = unit
         else:
             line = trial
     if line:
         d.text((x, y), line, font=f, fill=fill)
+        note("text", x, y, x + d.textlength(line, font=f), y + size * 1.2, line)
         y += leading
     return y
 
 
 def table(d, x, y, rows, widths, size=20, header=True, row_h=40) -> int:
     """A ruled table — the thing the model is supposed to give back as a real `<table>`."""
+    top = y
     for r, row in enumerate(rows):
         cx = x
         if header and r == 0:
@@ -100,6 +124,9 @@ def table(d, x, y, rows, widths, size=20, header=True, row_h=40) -> int:
             text(d, (cx + 9, y + (row_h - size) / 2 - 2), str(cell), kind, size)
             cx += w
         y += row_h
+    # …and the table as a whole, so "did it see a table here?" can be asked separately.
+    note("table", x, top, x + sum(widths), y,
+         " ".join(str(c) for row in rows for c in row))
     return y
 
 
@@ -126,6 +153,7 @@ def signature(d, x, y, seed=1, width=230, colour=(20, 30, 90)):
     d.arc([x - 6, y - 26, x + 54, y + 24], 120, 340, fill=colour, width=3)   # an initial capital
     d.line([(x + 12, y + 36), (x + width - 14, y + 28 + rng.uniform(-4, 4))],
            fill=colour, width=2)
+    note("signature", x - 6, y - 28, x + width, y + 40)
 
 
 def signature_block(d, x, y, name, role, seed, width=310):
@@ -152,6 +180,8 @@ def chop(im, x, y, lines, seed=3, radius=78, colour=(200, 30, 30)):
                fill=(r, g, b, 225))
     layer = layer.rotate(random.Random(seed).uniform(-14, 14), resample=Image.BICUBIC)
     im.paste(layer, (x, y), layer)
+    note("seal", x, y, x + radius * 2 + 40, y + radius * 2 + 40,
+         " ".join(line for line, _ in lines))
 
 
 def emboss(im, x, y, lines, radius=70):
@@ -169,6 +199,8 @@ def emboss(im, x, y, lines, radius=70):
         d.text((c - d.textlength(line, font=f) / 2, c - 26 + i * 26), line, font=f,
                fill=(150, 150, 150, 160))
     im.paste(layer, (x, y), layer)
+    note("seal", x, y, x + radius * 2 + 30, y + radius * 2 + 30,
+         " ".join(line for line, _ in lines))
 
 
 def crest(d, x, y, initials="BC", colour=GREEN):
@@ -178,13 +210,15 @@ def crest(d, x, y, initials="BC", colour=GREEN):
     d.line([(x + 14, y + 28), (x + 78, y + 28)], fill=colour, width=3)
     f = font("serif_bold", 34)
     d.text((x + 46 - d.textlength(initials, font=f) / 2, y + 40), initials, font=f, fill=colour)
+    note("image", x, y, x + 92, y + 104, initials)
 
 
 def logo(d, x, y, name, tag, colour=BLUE):
     d.ellipse([x, y, x + 62, y + 62], outline=colour, width=5)
     d.polygon([(x + 18, y + 40), (x + 31, y + 17), (x + 44, y + 40)], fill=colour)
     d.rectangle([x + 18, y + 43, x + 44, y + 47], fill=colour)
-    text(d, (x + 78, y + 8), name, "sans_bold", 30, colour)
+    note("image", x, y, x + 62, y + 62)
+    text(d, (x + 78, y + 8), name, "sans_bold", 30, colour, label="title")
     text(d, (x + 79, y + 42), tag, "sans", 15, GREY)
 
 
@@ -196,7 +230,8 @@ def figure(d, x, y, w=460, h=260, title="Applications received by quarter"):
         bx = x + 78 + i * 68
         d.rectangle([bx, y + h - 45 - value * (h - 95), bx + 44, y + h - 45], fill=(70, 110, 190))
         text(d, (bx + 6, y + h - 38), f"Q{i+1}", "sans", 15, GREY)
-    text(d, (x + 16, y + 10), title, "sans_bold", 16, INK)
+    note("image", x, y, x + w, y + h, title)
+    text(d, (x + 16, y + 10), title, "sans_bold", 16, INK, label="caption")
 
 
 def callout(d, x, y, w, title, body) -> int:
@@ -223,6 +258,7 @@ def barcode(d, x, y, digits, w=300, h=64):
         if rng.random() > 0.35:
             d.rectangle([cx, y, cx + bar, y + h], fill=INK)
         cx += bar + rng.choice([2, 3])
+    note("image", x, y, x + w, y + h, digits)
     text(d, (x, y + h + 6), digits, "mono", 17, INK)
 
 
@@ -544,16 +580,25 @@ SAMPLES = [
 
 
 def main() -> int:
+    TRUTH_DIR.mkdir(exist_ok=True)
     index = {}
     for name, builders, label in SAMPLES:
-        pages = [b() for b in builders]
+        pages, truth = [], []
+        for build in builders:
+            TRUTH.clear()
+            pages.append(build())
+            truth.append(list(TRUTH))          # the answer key for the page just drawn
         path = HERE / name
         if path.suffix == ".pdf":
             pages[0].save(path, "PDF", resolution=150.0, save_all=True, append_images=pages[1:])
         else:
             pages[0].save(path, quality=88)
+        (TRUTH_DIR / (path.stem + ".json")).write_text(
+            json.dumps({"file": name, "pages": truth}, indent=1, ensure_ascii=False) + "\n")
         index[name] = label
-        print(f"wrote {path.relative_to(HERE.parent)}  ({len(pages)} page(s))")
+        items = sum(len(t) for t in truth)
+        print(f"wrote {path.relative_to(HERE.parent)}  "
+              f"({len(pages)} page(s), {items} things in the answer key)")
     (HERE / "index.json").write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n")
     print(f"wrote {(HERE / 'index.json').relative_to(HERE.parent)}")
     return 0
