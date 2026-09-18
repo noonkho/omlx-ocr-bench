@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Can ONE request carry several page images? That is the whole reason to care about this model.
 
-Feenote's OCR today is one page = one request, in a plain loop, and on a 58-file folder that is
-most of a three-hour run. "Multi page parsing" in the model's own prompt suggests the model can
-take a whole document at once. This asks it directly, and compares against the same pages sent
-one at a time.
+"Multi page parsing" in the model's own prompt suggests it can take a whole document at once.
+This asks the server directly and compares against the same pages sent one at a time.
+
+The answer on oMLX 0.6.4 is no, and `prompt_tokens` is the proof: it does not change when more
+images are added, so the extra images were never tokenised. Any "speed-up" printed below is
+therefore fake — the other pages were never read. See README and OMLX-BUG-REPORT.md.
 """
 import base64, json, sys, time, urllib.request
 from pathlib import Path
@@ -59,12 +61,12 @@ def main():
     else:
         print(f"   {dt:5.1f}s  {usage.get('completion_tokens',0)} out tok / "
               f"{usage.get('prompt_tokens',0)} in tok")
-        # Did it actually read every page, or only the first?
-        for i, png in enumerate(pages, 1):
-            pass
         print(f"   returned {len(text)} chars")
         print("   " + text[:400].replace("\n", "\n   "))
-        print(f"\n   speed-up vs one-per-page: {one_total/dt:.2f}x" if dt else "")
+        if dt:
+            print(f"\n   apparent speed-up vs one-per-page: {one_total/dt:.2f}x")
+            print("   ^ NOT real. Compare prompt_tokens above against a single-image request:")
+            print("     if it is unchanged, only the first page was ever read.")
 
 
 if __name__ == "__main__":

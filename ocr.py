@@ -18,11 +18,52 @@ import config
 #: Coordinates are 0-1000 NORMALISED to the page, not pixels — so they survive any render DPI.
 _DET = re.compile(r"<\|det\|>\s*(\w+)\s*\[([\d\s,]+)\]\s*<\|/det\|>")
 
+#: A run of bare numbers — `1. 2. 3. 4. …` or `2. 2. 2. …` — which this model emits before the
+#: first real block on a page that holds almost no text. Never document content.
+_COUNTER = re.compile(r"^(?:\d+\.\s*){4,}")
+
 #: One colour per block kind, for the overlay.
 COLOURS = {
     "title": "#d92b2b", "text": "#2b6cd9", "table": "#1a9e5c", "image": "#b453d9",
     "formula": "#d98c1a", "header": "#e2760c", "footer": "#8a8a8a", "caption": "#00a0a8",
+    "page_number": "#7a7a7a", "unboxed": "#b3261e", "noise": "#b3261e",
 }
+
+#: Block kinds a caller should not put into a markdown file. See `parse`.
+JUNK = {"noise", "unboxed"}
+
+
+def strip_markers(text: str) -> str:
+    """The words without the `<|det|>` markers. Their coordinates differ on every repeat, so a
+    repeat test has to look at what the markers WRAP, not at the markers themselves."""
+    return _DET.sub("", text or "")
+
+
+def build_body(model: str, prompt: str, images: list[str], knobs: dict) -> dict:
+    """One request body, for every caller. `images` are ready-made `data:` URLs."""
+    content: list[dict] = [{"type": "text", "text": prompt}]
+    content += [{"type": "image_url", "image_url": {"url": url}} for url in images]
+    return {"model": model, "messages": [{"role": "user", "content": content}], **knobs}
+
+
+def data_url(png: bytes) -> str:
+    return "data:image/png;base64," + base64.b64encode(png).decode()
+
+
+def request(base_url: str, api_key: str, body: dict) -> urllib.request.Request:
+    return urllib.request.Request(
+        base_url.rstrip("/") + "/chat/completions", data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"})
+
+
+def http_detail(exc: Exception) -> str:
+    """The server's own words when it returns an error, which are the useful part."""
+    if not hasattr(exc, "read"):
+        return ""
+    try:
+        return " " + exc.read()[:300].decode("utf-8", "replace")
+    except Exception:                                      # noqa: BLE001 - best effort
+        return ""
 
 
 @dataclass
@@ -51,7 +92,8 @@ class PageResult:
     @property
     def plain_text(self) -> str:
         """Just the words, markers stripped — what a downstream pipeline would actually read."""
-        return "\n".join(b.content for b in self.blocks if b.content.strip())
+        return "\n".join(b.content for b in self.blocks
+                         if b.content.strip() and b.label not in JUNK)
 
 
 def parse(raw: str) -> list[Block]:
@@ -68,9 +110,12 @@ def parse(raw: str) -> list[Block]:
 
     preamble = raw[:marks[0].start()].strip()
     if preamble:
-        # Not inside any box the model drew. Usually a header it read loosely — or, in testing,
-        # an invented date. Kept and flagged rather than silently dropped.
-        out.append(Block("unboxed", (0, 0, 1000, 20), preamble))
+        # Not inside any box the model drew, and measured to be untrustworthy: on a near-empty
+        # page it is `1. 2. 3. 4. …`, and on a dense one it has produced a date that is not on
+        # the page at all. Flagged rather than silently dropped, and kept OUT of the markdown
+        # a caller would export. `noise` is the counter form; `unboxed` is everything else.
+        label = "noise" if _COUNTER.match(preamble) else "unboxed"
+        out.append(Block(label, (0, 0, 1000, 20), preamble))
 
     for i, m in enumerate(marks):
         nums = [int(n) for n in re.findall(r"\d+", m.group(2))]
@@ -112,22 +157,13 @@ def render_pages(path: Path, dpi: int = config.DPI) -> list[tuple[bytes, tuple[i
 
 
 def ocr_page(png: bytes, size: tuple[int, int], index: int,
-             prompt: str = config.PROMPT, max_tokens: int = 8192) -> PageResult:
+             prompt: str = config.PROMPT, max_tokens: int = 4096) -> PageResult:
     """One page, one request. Never raises — a page that fails carries its own error."""
     result = PageResult(index=index, png=png, size=size)
-    body = {
-        "model": config.MODEL, "max_tokens": max_tokens, "temperature": 0,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url",
-             "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode()}},
-        ]}],
-    }
-    req = urllib.request.Request(
-        config.BASE_URL.rstrip("/") + "/chat/completions",
-        data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json",
-                 "Authorization": f"Bearer {config.API_KEY}"})
+    body = build_body(config.MODEL, prompt, [data_url(png)],
+                      {"max_tokens": max_tokens, "temperature": 0,
+                       "frequency_penalty": config.FREQUENCY_PENALTY})
+    req = request(config.BASE_URL, config.API_KEY, body)
     started = time.time()
     try:
         with urllib.request.urlopen(req, timeout=900) as response:
@@ -136,13 +172,7 @@ def ocr_page(png: bytes, size: tuple[int, int], index: int,
         result.usage = data.get("usage") or {}
         result.blocks = parse(result.raw)
     except Exception as exc:                               # noqa: BLE001 - reported, not raised
-        detail = ""
-        if hasattr(exc, "read"):
-            try:
-                detail = exc.read()[:300].decode("utf-8", "replace")
-            except Exception:
-                pass
-        result.error = f"{type(exc).__name__}: {exc} {detail}".strip()
+        result.error = f"{type(exc).__name__}: {exc}{http_detail(exc)}".strip()
     result.seconds = time.time() - started
     return result
 

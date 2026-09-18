@@ -6,16 +6,17 @@
   --bg:#f4f4f1; --panel:#fff; --ink:#191917; --muted:#6c6c64; --line:#e3e3dd;
   --accent:#b5341f; --accent-ink:#8d2817; --field:#fafaf7; --ok:#1a7f4b; --warn:#b3261e;
   --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 20px rgba(0,0,0,.05);
+  --paper:#ffffff;
 }
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#141417; --panel:#1c1c21; --ink:#ededf2; --muted:#9a9aa3; --line:#2e2e36;
   --accent:#e0644c; --accent-ink:#f0907c; --field:#23232a; --ok:#4ec98a; --warn:#ff7b6e;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); --paper:#0e0e11;
 }}
 :root[data-theme=dark]{
   --bg:#141417; --panel:#1c1c21; --ink:#ededf2; --muted:#9a9aa3; --line:#2e2e36;
   --accent:#e0644c; --accent-ink:#f0907c; --field:#23232a; --ok:#4ec98a; --warn:#ff7b6e;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); --paper:#0e0e11;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -24,16 +25,17 @@ body{margin:0;background:var(--bg);color:var(--ink);
 button,input,textarea,select{font:inherit;color:inherit}
 
 /* ---------------------------------------------------------------- shell */
-.app{display:grid;grid-template-columns:318px minmax(0,1fr) minmax(0,1.1fr);
+.app{display:grid;grid-template-columns:330px minmax(0,1fr) minmax(0,1.15fr);
   gap:12px;padding:12px;height:100vh}
-@media(max-width:1100px){
+@media(max-width:1180px){
   .app{grid-template-columns:1fr;grid-template-rows:auto auto auto;height:auto;overflow:auto}
   body{overflow:auto}
+  .pane{max-height:none}
 }
 .pane{background:var(--panel);border:1px solid var(--line);border-radius:14px;
   box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.pane > header{padding:11px 14px;border-bottom:1px solid var(--line);
-  display:flex;align-items:baseline;gap:9px;flex:none}
+.pane > header{padding:10px 14px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:9px;flex:none;flex-wrap:wrap}
 .pane > header h2{margin:0;font-size:15px;font-weight:650;letter-spacing:-.01em}
 .pane > header .note{font-size:11.5px;color:var(--muted);margin-left:auto;text-align:right}
 .body{padding:12px 14px;overflow:auto;flex:1 1 auto;min-height:0}
@@ -46,25 +48,31 @@ input[type=text],input[type=password],input[type=number],textarea,select{
   width:100%;background:var(--field);border:1px solid var(--line);border-radius:9px;
   padding:7px 9px;font-size:13px;outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--accent)}
-textarea{resize:vertical;min-height:62px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+textarea{resize:vertical;min-height:58px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:12.5px;line-height:1.45}
 .row{display:flex;gap:8px}.row > *{flex:1 1 0;min-width:0}
+.knobs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.knobs .lbl{margin-bottom:3px;font-size:10px;text-transform:none;letter-spacing:0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-weight:600}
+.knobs input{padding:5px 7px;font-size:12.5px}
 button.go{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:9px 12px;
   font-weight:650;cursor:pointer;width:100%}
 button.go:disabled{opacity:.45;cursor:default}
 button.ghost{background:var(--field);border:1px solid var(--line);border-radius:9px;
   padding:6px 11px;cursor:pointer;font-size:12.5px}
+button.ghost:hover{border-color:var(--accent)}
 .hint{font-size:11.5px;color:var(--muted);margin:5px 0 0;line-height:1.45}
-.state{font-size:12px;margin-top:6px}
+.state{font-size:12px;margin-top:6px;overflow-wrap:anywhere}
 .state.ok{color:var(--ok)} .state.bad{color:var(--warn)}
 details summary{cursor:pointer;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
   color:var(--accent-ink);font-weight:700;margin-bottom:8px}
 label.check{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;
-  text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400}
+  text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;margin-top:9px}
 label.check input{width:auto;margin-top:2px;flex:none}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 
 /* ---------------------------------------------------------------- drop zone */
-.drop{border:2px dashed var(--line);border-radius:12px;padding:20px 12px;text-align:center;
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px 12px;text-align:center;
   background:var(--field);cursor:pointer;transition:border-color .12s,background .12s}
 .drop.hot{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--field))}
 .drop .big{font-size:13.5px;font-weight:600}
@@ -78,45 +86,88 @@ label.check input{width:auto;margin-top:2px;flex:none}
 .bar{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin:10px 0 0}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
 
-/* ---------------------------------------------------------------- middle */
+/* ---------------------------------------------------------------- panes */
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;
   background:var(--field)}
 .seg button{border:0;background:none;padding:3px 11px;font-size:12px;cursor:pointer;
   color:var(--muted)}
 .seg button[aria-pressed=true]{background:var(--accent);color:#fff}
-pre.out{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
-  font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
-.md h1,.md h2,.md h3{font-size:15px;margin:14px 0 6px}
-.md table{border-collapse:collapse;margin:8px 0;font-size:12.5px}
-.md td,.md th{border:1px solid var(--line);padding:4px 8px}
 .pagehead{display:flex;align-items:baseline;gap:8px;margin:16px 0 7px;
   padding-bottom:5px;border-bottom:1px solid var(--line)}
 .pagehead:first-child{margin-top:0}
 .pagehead b{font-size:13px} .pagehead span{font-size:11.5px;color:var(--muted)}
 .flag{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--warn);color:#fff}
+.flag.soft{background:var(--field);color:var(--muted);border:1px solid var(--line)}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:36px 12px}
 
-/* ---------------------------------------------------------------- right */
+/* ---------------------------------------------------------------- middle: the document */
 .sheet{position:relative;line-height:0;border:1px solid var(--line);border-radius:10px;
-  overflow:hidden;background:var(--panel);margin-bottom:14px}
+  overflow:hidden;background:var(--paper);margin-bottom:14px;scroll-margin-top:8px}
 .sheet img{width:100%;display:block}
 .box{position:absolute;border:2px solid;border-radius:2px;cursor:pointer}
 .box span{position:absolute;top:-1px;left:-1px;color:#fff;font-size:9px;line-height:1.4;
   padding:0 4px;border-radius:2px 0 4px 0;white-space:nowrap;opacity:.92}
-.box.on{box-shadow:0 0 0 3px rgba(255,190,0,.8);z-index:3}
+.box.on{box-shadow:0 0 0 3px rgba(255,190,0,.85);z-index:3}
+
+/* ---------------------------------------------------------------- right: the answer */
+pre.out{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
+  font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+pre.out .det{color:var(--muted);opacity:.75}
+.md{font-size:13.5px;line-height:1.6}
+.md h1,.md h2,.md h3{font-size:15px;margin:14px 0 6px;font-weight:650}
+.md p{margin:6px 0}
+.md table{border-collapse:collapse;margin:9px 0;font-size:12.5px;width:100%}
+.md td,.md th{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.md th{background:var(--field)}
+.md ul,.md ol{margin:6px 0;padding-left:22px}
+.md hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.md .junk{border-left:3px solid var(--warn);padding:5px 10px;margin:8px 0;font-size:12px;
+  color:var(--muted);background:color-mix(in srgb,var(--warn) 6%,transparent);border-radius:0 7px 7px 0}
+.md .imgblock{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;
+  color:var(--muted);font-size:12px}
 .blk{padding:6px 8px;border-radius:7px;border:1px solid transparent;cursor:pointer}
 .blk.on{border-color:var(--line);background:color-mix(in srgb,var(--accent) 9%,transparent)}
 .tag{display:inline-block;color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;
   vertical-align:2px}
 .blk .txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12.5px;margin-top:3px}
-.empty{color:var(--muted);font-size:13px;text-align:center;padding:36px 12px}
+.live{display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--accent);
+  animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.25}}
 </style></head><body>
 <div class="app">
 
   <!-- ============================================================ LEFT -->
   <div class="pane">
     <header><h2>Set up &amp; run</h2>
-      <button class="ghost" id="theme" title="Light / dark">◐</button></header>
+      <button class="ghost" id="theme" title="Light / dark" style="margin-left:auto">◐</button>
+    </header>
     <div class="body">
+
+      <div class="grp">
+        <label>Document</label>
+        <div class="drop" id="drop">
+          <div class="big">Drop a PDF or image</div>
+          <div class="sm">or click to choose · pdf, png, jpg, webp, tif</div>
+        </div>
+        <input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" hidden>
+        <div id="chosen"></div>
+        <p class="hint" style="margin-top:8px">or try a built-in synthetic page:</p>
+        <div class="row" id="samples" style="margin-top:5px"></div>
+      </div>
+
+      <div class="grp">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" spellcheck="false"></textarea>
+        <div class="row" style="margin-top:7px;flex-wrap:wrap">
+          <button class="ghost" data-p="Multi page parsing.">Multi page</button>
+          <button class="ghost" data-p="document parsing.">Document</button>
+          <button class="ghost" data-p="Free OCR.">Free OCR</button>
+          <button class="ghost" data-p="Extract the text in the image.">Text only</button>
+        </div>
+        <p class="hint"><b>Do not start it with <code>&lt;image&gt;</code>.</b> oMLX adds its own
+          image placeholder, so a literal one makes two placeholders for one image and the server
+          returns HTTP 500. Measured.</p>
+      </div>
 
       <details class="grp" id="conn" open>
         <summary>Server</summary>
@@ -133,47 +184,58 @@ pre.out{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
         <p class="hint" id="modelhint"></p>
       </details>
 
-      <div class="grp">
-        <label for="prompt">Prompt</label>
-        <textarea id="prompt" spellcheck="false"></textarea>
-        <p class="hint"><b>Do not start it with <code>&lt;image&gt;</code>.</b> oMLX adds its own
-          image placeholder, so the literal one makes two for one image and the server returns
-          HTTP 500. Measured.</p>
-        <div class="row" style="margin-top:7px">
-          <button class="ghost" data-p="Multi page parsing.">Multi page</button>
-          <button class="ghost" data-p="Free OCR.">Free OCR</button>
-          <button class="ghost" data-p="Convert the document to markdown.">To markdown</button>
+      <details class="grp" open>
+        <summary>Sampling</summary>
+        <div class="knobs">
+          <div><label class="lbl" for="temperature">temperature</label>
+            <input type="number" id="temperature" step="0.05" min="0" max="2"></div>
+          <div><label class="lbl" for="max_tokens">max_tokens</label>
+            <input type="number" id="max_tokens" step="256" min="64" max="32768"></div>
+          <div><label class="lbl" for="top_p">top_p</label>
+            <input type="number" id="top_p" step="0.05" min="0" max="1" placeholder="server default"></div>
+          <div><label class="lbl" for="top_k">top_k</label>
+            <input type="number" id="top_k" step="1" min="0" placeholder="server default"></div>
+          <div><label class="lbl" for="min_p">min_p</label>
+            <input type="number" id="min_p" step="0.01" min="0" max="1" placeholder="server default"></div>
+          <div><label class="lbl" for="seed">seed</label>
+            <input type="number" id="seed" step="1" placeholder="none"></div>
+          <div><label class="lbl" for="repetition_penalty">repetition_penalty</label>
+            <input type="number" id="repetition_penalty" step="0.01" min="1" max="2" placeholder="1.0"></div>
+          <div><label class="lbl" for="frequency_penalty">frequency_penalty</label>
+            <input type="number" id="frequency_penalty" step="0.1" min="0" max="2"></div>
+          <div><label class="lbl" for="presence_penalty">presence_penalty</label>
+            <input type="number" id="presence_penalty" step="0.1" min="0" max="2" placeholder="0"></div>
+          <div><label class="lbl" for="no_repeat_ngram_size">no_repeat_ngram_size</label>
+            <input type="number" id="no_repeat_ngram_size" step="1" min="0" placeholder="ignored"></div>
         </div>
-      </div>
-
-      <div class="grp">
-        <label>Document</label>
-        <div class="drop" id="drop">
-          <div class="big">Drop a PDF or image</div>
-          <div class="sm">or click to choose · pdf, png, jpg, webp, tif</div>
-        </div>
-        <input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" hidden>
-        <div id="chosen"></div>
-        <p class="hint" style="margin-top:8px">or try one of the built-in synthetic pages:</p>
-        <div class="row" id="samples" style="margin-top:5px"></div>
-      </div>
+        <p class="hint"><b><code>frequency_penalty: 0.8</code> is the one that matters.</b> On a
+          near-empty page this model repeats the same block to the token cap; 0.8 ends the page
+          cleanly and — measured on a dense page — changes nothing else at all.
+          <code>repetition_penalty</code> at 1.15 also stops the loop but damages layout, and
+          <code>no_repeat_ngram_size</code> (what the official pipeline uses) is accepted by oMLX
+          and then ignored. See the README.</p>
+        <p class="hint"><b>Context window</b> is the model's own, shown next to it above; oMLX
+          takes it from the checkpoint and there is no request field for it.</p>
+      </details>
 
       <details class="grp">
-        <summary>Advanced</summary>
+        <summary>Run</summary>
         <div class="row">
           <div><label class="lbl" for="dpi">Render DPI</label>
             <input type="number" id="dpi" min="72" max="400" step="10"></div>
-          <div><label class="lbl" for="maxtok">Max tokens</label>
-            <input type="number" id="maxtok" min="256" max="16384" step="256" value="4096"></div>
+          <div><label class="lbl" for="mode">Requests</label>
+            <select id="mode">
+              <option value="page">one per page</option>
+              <option value="whole">whole document in one</option>
+            </select></div>
         </div>
         <p class="hint">150 dpi is enough for typed English. Traditional Chinese reads better at
           200&ndash;300.</p>
-        <label class="check" style="margin-top:9px">
+        <p class="hint" id="modehint"></p>
+        <label class="check">
           <input type="checkbox" id="guard" checked>
-          <span>Stop a runaway page. This model repeats <code>1. 2. 3. 4. …</code> to the token cap
-            on a near-empty page. The official pipeline prevents it with
-            <code>no_repeat_ngram_size=35</code>, which mlx-vlm does not implement — so a caller
-            can only notice and refuse.</span>
+          <span>Stop a runaway page. If the answer becomes the same line over and over, abandon
+            it instead of paying for the whole cap.</span>
         </label>
       </details>
 
@@ -185,30 +247,38 @@ pre.out{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;
 
   <!-- ============================================================ MIDDLE -->
   <div class="pane">
-    <header><h2>What the model returned</h2>
-      <div class="seg" id="view">
-        <button data-v="text" aria-pressed="true">Text</button>
-        <button data-v="md" aria-pressed="false">Rendered</button>
-        <button data-v="raw" aria-pressed="false">Raw</button>
-      </div>
-      <span class="note" id="midnote"></span></header>
-    <div class="body" id="mid"><p class="empty">Nothing yet.</p></div>
+    <header><h2>The document</h2>
+      <span class="note" id="docnote">nothing loaded</span></header>
+    <div class="body" id="doc"><p class="empty">Drop a PDF on the left.</p></div>
   </div>
 
   <!-- ============================================================ RIGHT -->
   <div class="pane">
-    <header><h2>Where it found it</h2>
-      <span class="note" id="rightnote">the model's own layout boxes</span></header>
-    <div class="body" id="right"><p class="empty">Nothing yet.</p></div>
+    <header><h2>What the model returned</h2>
+      <div class="seg" id="view">
+        <button data-v="md" aria-pressed="true">Rendered</button>
+        <button data-v="raw" aria-pressed="false">Raw</button>
+        <button data-v="boxes" aria-pressed="false">Boxes</button>
+      </div>
+      <button class="ghost" id="copy" title="Copy the markdown">Copy</button>
+      <button class="ghost" id="save" title="Download as .md">.md</button>
+      <span class="note" id="outnote"></span></header>
+    <div class="body" id="out"><p class="empty">Nothing yet.</p></div>
   </div>
 </div>
 
 <script>
-const COLOURS = {title:"#d92b2b",text:"#2b6cd9",table:"#1a9e5c",image:"#b453d9",
-  formula:"#d98c1a",header:"#e2760c",footer:"#8a8a8a",caption:"#00a0a8",unboxed:"#b3261e"};
 const $ = s => document.querySelector(s);
 const esc = s => (s||"").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-let JOB = null, PAGES = [], RESULTS = [], ES = null;
+const KNOBS = ["temperature","max_tokens","top_p","top_k","min_p","seed",
+  "repetition_penalty","frequency_penalty","presence_penalty","no_repeat_ngram_size"];
+
+/** Colours and the junk taxonomy come from the server, so `ocr.py` is the only place that
+ *  decides what a block kind is called or whether it is worth keeping. */
+let COLOURS = {}, JUNK = new Set();
+let JOB = null, PAGES = [], RESULTS = [], LIVE = {}, ES = null, MODELS = [], WHOLE = false;
+/** Finished pages never change, so their HTML is rendered once and reused on every repaint. */
+const CACHE = new Map();
 
 // ---------------------------------------------------------------- theme
 $("#theme").onclick = () => {
@@ -225,11 +295,17 @@ fetch("/api/defaults").then(r => r.json()).then(d => {
   $("#url").value = d.base_url; $("#key").value = d.api_key;
   $("#prompt").value = d.prompt; $("#dpi").value = d.dpi;
   $("#model").innerHTML = `<option>${esc(d.model)}</option>`;
+  COLOURS = d.colours || {}; JUNK = new Set(d.junk || []);
+  Object.entries(d.knobs || {}).forEach(([k, v]) => { if ($("#" + k)) $("#" + k).value = v; });
   test();
 });
 
 // ---------------------------------------------------------------- connection
 $("#test").onclick = test;
+$("#model").onchange = modelNote;
+$("#mode").onchange = modeNote;
+modeNote();
+
 async function test(){
   const s = $("#connstate"); s.className = "state"; s.textContent = "checking…";
   const r = await fetch("/api/models", {method:"POST", headers:{"Content-Type":"application/json"},
@@ -237,17 +313,30 @@ async function test(){
   if (!r.ok){ s.className = "state bad"; s.textContent = r.error; return; }
   s.className = "state ok";
   s.textContent = `connected · ${r.models.length} models · ${r.ms} ms`;
+  MODELS = r.models;
   const want = $("#model").value;
   $("#model").innerHTML = r.models.map(m =>
-    `<option${m === want ? " selected" : ""}>${esc(m)}</option>`).join("");
-  if (r.models.includes(want)) $("#model").value = want;
-  const hint = $("#modelhint");
-  const ok = /unlimited/i.test($("#model").value);
-  hint.innerHTML = ok ? "" :
-    "<b style='color:var(--warn)'>That is not an Unlimited-OCR model.</b> Layout boxes and the " +
-    "<code>&lt;|det|&gt;</code> format are specific to it; another model will still answer, but the " +
-    "right panel may be empty.";
-  $("#model").onchange = () => test();
+    `<option value="${esc(m.id)}"${m.id === want ? " selected" : ""}>${esc(m.id)}</option>`).join("");
+  if (r.models.some(m => m.id === want)) $("#model").value = want;
+  modelNote();
+}
+function modelNote(){
+  const id = $("#model").value;
+  const m = MODELS.find(x => x.id === id) || {};
+  const ctx = m.max_model_len ? `context window ${m.max_model_len.toLocaleString()} tokens. ` : "";
+  $("#modelhint").innerHTML = /unlimited/i.test(id)
+    ? ctx
+    : `${ctx}<b style="color:var(--warn)">That is not an Unlimited-OCR model.</b> The layout
+       boxes and the <code>&lt;|det|&gt;</code> format are specific to it. Another model will
+       still answer, but <b>Boxes</b> will be empty.`;
+}
+function modeNote(){
+  $("#modehint").innerHTML = $("#mode").value === "whole"
+    ? `<b style="color:var(--warn)">Known broken on oMLX today.</b> All pages go in one request,
+       which is what this model is built for — but oMLX passes only the FIRST image to the model
+       and drops the rest silently. Kept here so you can reproduce it: watch
+       <code>prompt_tokens</code> stay the same however many pages you send.`
+    : "";
 }
 
 // ---------------------------------------------------------------- upload
@@ -271,17 +360,22 @@ async function take(f){
     $("#chosen").innerHTML = `<div class="file" style="color:var(--warn)">${esc(r.error)}</div>`;
     return;
   }
-  JOB = r.job; PAGES = r.pages; RESULTS = [];
+  JOB = r.job; PAGES = r.pages; reset();
   $("#chosen").innerHTML = `<div class="file"><b>${esc(r.name)}</b>
     <span style="color:var(--muted)">${r.pages.length} page(s) · ${r.dpi} dpi</span>
     <button class="x" onclick="clearFile()">✕</button></div>`;
   $("#run").disabled = false;
-  drawPages();
-  $("#mid").innerHTML = `<p class="empty">Ready. Press <b>Run OCR</b>.</p>`;
+  $("#docnote").textContent = `${r.pages.length} page(s) · ${r.dpi} dpi`;
+  drawDoc();
+  $("#out").innerHTML = `<p class="empty">Ready. Press <b>Run OCR</b>.</p>`;
 }
+function reset(){ RESULTS = []; LIVE = {}; CACHE.clear(); }
 function clearFile(){
-  JOB = null; PAGES = []; RESULTS = []; $("#chosen").innerHTML = ""; $("#run").disabled = true;
-  $("#right").innerHTML = $("#mid").innerHTML = `<p class="empty">Nothing yet.</p>`;
+  JOB = null; PAGES = []; reset();
+  $("#chosen").innerHTML = ""; $("#run").disabled = true;
+  $("#docnote").textContent = "nothing loaded";
+  $("#doc").innerHTML = `<p class="empty">Drop a PDF on the left.</p>`;
+  $("#out").innerHTML = `<p class="empty">Nothing yet.</p>`;
 }
 
 // ---------------------------------------------------------------- built-in samples
@@ -307,107 +401,241 @@ document.querySelectorAll("[data-p]").forEach(b =>
 $("#run").onclick = () => {
   if (!JOB) return;
   if (ES) ES.close();
-  RESULTS = PAGES.map(() => null);
+  WHOLE = $("#mode").value === "whole";
+  const units = WHOLE ? 1 : PAGES.length;
+  reset(); RESULTS = new Array(units).fill(null);
   $("#run").disabled = true; $("#prog").style.width = "0%";
   $("#runstate").className = "state"; $("#runstate").textContent = "starting…";
-  $("#mid").innerHTML = "";
-  drawPages();
-  const q = new URLSearchParams({job:JOB, prompt:$("#prompt").value, model:$("#model").value,
-    base_url:$("#url").value, api_key:$("#key").value, max_tokens:$("#maxtok").value,
-    guard: $("#guard").checked ? "1" : "0"});
-  ES = new EventSource("/api/stream?" + q);
+  draw();
+
+  // The settings are POSTed and the stream quotes a ticket, so the API key never appears in a
+  // URL — `EventSource` cannot send headers, and a URL ends up in history and in proxy logs.
+  const settings = {job:JOB, prompt:$("#prompt").value, model:$("#model").value,
+    base_url:$("#url").value, api_key:$("#key").value, mode:$("#mode").value,
+    guard: $("#guard").checked ? "1" : "0"};
+  KNOBS.forEach(k => { const v = $("#" + k).value.trim(); if (v !== "") settings[k] = v; });
+  start(settings, units);
+};
+
+async function start(settings, units){
+  const r = await fetch("/api/run", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(settings)}).then(r => r.json());
+  if (!r.ok){
+    $("#runstate").className = "state bad"; $("#runstate").textContent = "could not start";
+    $("#run").disabled = false; return;
+  }
+  ES = new EventSource("/api/stream?run=" + encodeURIComponent(r.run));
   let done = 0;
   ES.addEventListener("page_start", e => {
-    const i = JSON.parse(e.data).index;
-    $("#runstate").textContent = `page ${i+1} of ${PAGES.length}…`;
+    const d = JSON.parse(e.data);
+    LIVE[d.index] = {raw:"", blocks:[]};
+    $("#runstate").textContent = WHOLE
+      ? `one request, ${d.images} image(s)…` : `page ${d.index+1} of ${units}…`;
+    draw();
+  });
+  ES.addEventListener("delta", e => {
+    const d = JSON.parse(e.data);
+    const live = LIVE[d.index] || (LIVE[d.index] = {raw:"", blocks:[]});
+    live.raw = d.text;                                  // the server sends the whole answer so far
+    if (d.blocks) live.blocks = d.blocks;               // …and blocks only when one closed
+    schedule();
   });
   ES.addEventListener("page", e => {
     const p = JSON.parse(e.data);
-    RESULTS[p.index] = p; done++;
-    $("#prog").style.width = (done / PAGES.length * 100) + "%";
-    drawMiddle(); drawPages();
+    RESULTS[p.index] = p; delete LIVE[p.index]; CACHE.delete(p.index); done++;
+    $("#prog").style.width = (done / units * 100) + "%";
+    draw();
   });
   ES.addEventListener("done", e => {
     const d = JSON.parse(e.data);
     const tok = RESULTS.reduce((a,p) => a + ((p && p.usage && p.usage.completion_tokens) || 0), 0);
     $("#runstate").className = "state ok";
-    $("#runstate").textContent =
-      `${PAGES.length} page(s) · ${d.seconds}s · ${tok} out tokens` +
+    $("#runstate").textContent = `${units} request(s) · ${d.seconds}s · ${tok} out tokens` +
       (d.seconds ? ` · ${Math.round(tok/d.seconds)} tok/s` : "");
     $("#run").disabled = false; ES.close(); ES = null;
   });
   ES.onerror = () => {
     $("#runstate").className = "state bad";
-    $("#runstate").textContent = "the stream stopped — is the server still running?";
+    $("#runstate").textContent = "the stream stopped — is the bench still running?";
     $("#run").disabled = false; if (ES) { ES.close(); ES = null; }
   };
-};
+}
 
-// ---------------------------------------------------------------- middle pane
-let VIEW = "text";
+// Frames arrive faster than a repaint is worth; coalesce them onto one animation frame.
+let pending = false;
+function schedule(){
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; draw(); });
+}
+
+// ---------------------------------------------------------------- the middle pane
+function drawDoc(){
+  $("#doc").innerHTML = PAGES.map((pg, i) =>
+    `<div class="pagehead"><b>Page ${i+1}</b><span>${pg.w}×${pg.h} px</span></div>
+     <div class="sheet" id="p${i}"><img src="${pg.url}" alt=""></div>`
+  ).join("") || `<p class="empty">Drop a PDF on the left.</p>`;
+}
+
+// ---------------------------------------------------------------- the right pane
+let VIEW = "md";
 document.querySelectorAll("#view button").forEach(b => b.onclick = () => {
-  VIEW = b.dataset.v;
+  VIEW = b.dataset.v; CACHE.clear();
   document.querySelectorAll("#view button").forEach(x =>
     x.setAttribute("aria-pressed", String(x === b)));
-  drawMiddle();
+  draw();
 });
-function drawMiddle(){
+
+function draw(){
   const out = [];
-  let anyRunaway = false;
-  RESULTS.forEach((p, i) => {
-    if (!p) return;
-    const u = p.usage || {};
-    const rate = p.seconds ? ` · ${Math.round((u.completion_tokens||0)/p.seconds)} tok/s` : "";
-    out.push(`<div class="pagehead"><b>Page ${i+1}</b>
-      <span>${p.seconds}s · ${u.completion_tokens||0} out / ${u.prompt_tokens||0} in${rate}
-      · ${p.blocks.length} blocks</span>
-      ${p.finish === "length" ? '<span class="flag">hit the token cap</span>' : ""}
-      ${p.runaway ? '<span class="flag">runaway repeat</span>' : ""}</div>`);
-    if (p.error){ out.push(`<p style="color:var(--warn)">${esc(p.error)}</p>`); return; }
-    if (p.runaway) anyRunaway = true;
-    if (VIEW === "raw") out.push(`<pre class="out">${esc(p.raw)}</pre>`);
-    else if (VIEW === "text")
-      out.push(`<pre class="out">${esc(p.blocks.map(b => b.content).join("\n"))}</pre>`);
-    else out.push(`<div class="md">${p.blocks.map(b =>
-      /^\s*<table/i.test(b.content) ? b.content
-        : `<p>${esc(b.content).replace(/\n/g,"<br>")}</p>`).join("")}</div>`);
-  });
-  $("#mid").innerHTML = out.join("") || `<p class="empty">Nothing yet.</p>`;
-  $("#midnote").textContent = anyRunaway
-    ? "a page was cut short — see the runaway note on the left" : "";
+  let flagged = false;
+  for (let i = 0; i < RESULTS.length; i++){
+    const p = RESULTS[i], live = LIVE[i];
+    if (!p && !live) continue;
+    if (p && p.runaway) flagged = true;
+    if (p && CACHE.has(i)){ out.push(CACHE.get(i)); continue; }
+    const html = head(i, p) + body(i, p, live);
+    if (p) CACHE.set(i, html);                  // a finished page never changes again
+    out.push(html);
+  }
+  $("#out").innerHTML = out.join("") || `<p class="empty">Nothing yet.</p>`;
+  $("#outnote").textContent = flagged ? "a page was cut short — runaway repeat" : "";
 }
 
-// ---------------------------------------------------------------- right pane
-function drawPages(){
-  $("#right").innerHTML = PAGES.map((pg, i) => {
-    const r = RESULTS[i];
-    const boxes = (r && r.blocks || []).map((b, j) => {
-      const [x0,y0,x1,y1] = b.box, c = COLOURS[b.label] || "#888";
-      return `<div class="box" data-p="${i}" data-i="${j}" title="${esc(b.label)}"
-        style="left:${x0/10}%;top:${y0/10}%;width:${(x1-x0)/10}%;height:${(y1-y0)/10}%;
-        border-color:${c}"><span style="background:${c}">${esc(b.label)}</span></div>`;
-    }).join("");
-    const list = (r && r.blocks || []).map((b, j) => {
-      const c = COLOURS[b.label] || "#888";
-      return `<div class="blk" data-p="${i}" data-i="${j}">
-        <span class="tag" style="background:${c}">${esc(b.label)}</span>
-        <div class="txt">${esc(b.content)}</div></div>`;
-    }).join("");
-    return `<div class="pagehead"><b>Page ${i+1}</b>
-      <span>${r ? r.blocks.length + " blocks" : "not read yet"}</span></div>
-      <div class="sheet"><img src="data:image/png;base64,${pg.png}" alt="">${boxes}</div>
-      ${list}`;
-  }).join("") || `<p class="empty">Nothing yet.</p>`;
-  pairHover();
+function body(i, p, live){
+  if (p && p.error) return `<p style="color:var(--warn)">${esc(p.error)}</p>`;
+  const raw = p ? p.raw : live.raw;
+  const blocks = p ? p.blocks : live.blocks;
+  if (VIEW === "raw") return `<pre class="out">${markers(raw)}</pre>`;
+  if (VIEW === "boxes") return boxes(i, blocks);
+  return `<div class="md">${render(blocks)}</div>`;
 }
-function pairHover(){
-  const mark = (p, i, on) => document.querySelectorAll(
-    `.box[data-p="${p}"][data-i="${i}"], .blk[data-p="${p}"][data-i="${i}"]`)
-    .forEach(el => el.classList.toggle("on", on));
-  document.querySelectorAll(".box,.blk").forEach(el => {
-    el.onmouseenter = () => mark(el.dataset.p, el.dataset.i, true);
-    el.onmouseleave = () => mark(el.dataset.p, el.dataset.i, false);
+
+function head(i, p){
+  const u = (p && p.usage) || {};
+  const rate = p && p.seconds ? ` · ${Math.round((u.completion_tokens||0)/p.seconds)} tok/s` : "";
+  const label = WHOLE ? "Whole document" : `Page ${i+1}`;
+  const stat = p
+    ? `${p.seconds}s · ${u.completion_tokens||0} out / ${u.prompt_tokens||0} in${rate} · ${p.blocks.length} blocks`
+    : `<span class="live"></span> reading…`;
+  return `<div class="pagehead"><b>${label}</b><span>${stat}</span>
+    ${p && p.images > 1 ? `<span class="flag soft">${p.images} images sent</span>` : ""}
+    ${p && p.finish === "length" ? '<span class="flag">hit the token cap</span>' : ""}
+    ${p && p.runaway ? '<span class="flag">runaway repeat</span>' : ""}</div>`;
+}
+
+/** The raw view, with the model's own `<|det|>` markers dimmed so the words stand out. */
+function markers(raw){
+  return esc(raw || "").replace(/&lt;\|det\|&gt;.*?&lt;\|\/det\|&gt;/g,
+    m => `<span class="det">${m}</span>`);
+}
+
+/** Should this block reach the reader as document content? See `ocr.parse` for why not. */
+const keep = b => (b.content || "").trim() && !JUNK.has(b.label);
+
+/** Blocks as a document: the model's own HTML tables kept, everything else as markdown. */
+function render(blocks){
+  return (blocks || []).map(b => {
+    const c = (b.content || "").trim();
+    if (!c) return "";
+    if (JUNK.has(b.label))
+      return `<div class="junk">${b.label === "noise"
+        ? "the model counted instead of reading — dropped"
+        : "written outside any box the model drew — check it against the page"}<br>${md(c)}</div>`;
+    if (b.label === "image" || /^\[non-?text\]/i.test(c))
+      return `<div class="imgblock">🖼 picture region — the model marked it, it read no text here</div>`;
+    if (/^<table/i.test(c)) return table(c);             // the model already wrote HTML
+    if (b.label === "title") return `<h2>${md(c)}</h2>`;
+    return `<p>${md(c)}</p>`;
+  }).join("");
+}
+
+/** The model's own HTML, reduced to table markup.
+ *
+ *  What comes back is model output driven by whatever document was dropped in, so it is not
+ *  trusted: a reply that opened with `<table><script>…` would otherwise run in this page, and
+ *  this page holds the API key. Only table tags and their text survive. */
+function table(html){
+  const ok = new Set(["TABLE","THEAD","TBODY","TFOOT","TR","TD","TH","CAPTION","COLGROUP","COL",
+                      "B","I","EM","STRONG","BR","P","SPAN"]);
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const clean = node => {
+    [...node.children].forEach(child => {
+      if (!ok.has(child.tagName)){ child.replaceWith(...child.childNodes); return; }
+      [...child.attributes].forEach(a => {
+        if (!["colspan","rowspan"].includes(a.name.toLowerCase())) child.removeAttribute(a.name);
+      });
+      clean(child);
+    });
+  };
+  clean(doc.body);
+  return doc.body.innerHTML;
+}
+
+/** A small markdown subset — enough for what this model emits, with no outside library. */
+function md(src){
+  let t = esc(src);
+  t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+  t = t.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  t = t.replace(/(^|\W)\*([^*\n]+)\*/g, "$1<i>$2</i>");
+  t = t.replace(/\$\$?([^$\n]+)\$\$?/g, "<code>$1</code>");     // the model writes LaTeX for formulae
+  return t.replace(/\n/g, "<br>");
+}
+
+/** The page image with the model's own boxes drawn on it, plus the text beside it. */
+function boxes(i, blocks){
+  const pg = PAGES[WHOLE ? 0 : i];
+  if (!pg) return "";
+  const rects = (blocks || []).map((b, j) => {
+    const [x0,y0,x1,y1] = b.box, c = COLOURS[b.label] || "#888";
+    return `<div class="box" data-p="${i}" data-i="${j}" title="${esc(b.label)}"
+      style="left:${x0/10}%;top:${y0/10}%;width:${(x1-x0)/10}%;height:${(y1-y0)/10}%;
+      border-color:${c}"><span style="background:${c}">${esc(b.label)}</span></div>`;
+  }).join("");
+  const list = (blocks || []).map((b, j) => {
+    const c = COLOURS[b.label] || "#888";
+    return `<div class="blk" data-p="${i}" data-i="${j}">
+      <span class="tag" style="background:${c}">${esc(b.label)}</span>
+      <div class="txt">${esc(b.content)}</div></div>`;
+  }).join("");
+  return `<div class="sheet"><img src="${pg.url}" alt="">${rects}</div>${list}`;
+}
+
+// One set of listeners on the pane, not three per box on every repaint.
+const pair = (el, on) => { if (!el) return;
+  document.querySelectorAll(`.box[data-p="${el.dataset.p}"][data-i="${el.dataset.i}"],
+    .blk[data-p="${el.dataset.p}"][data-i="${el.dataset.i}"]`)
+    .forEach(x => x.classList.toggle("on", on)); };
+$("#out").addEventListener("mouseover", e => pair(e.target.closest(".box,.blk"), true));
+$("#out").addEventListener("mouseout", e => pair(e.target.closest(".box,.blk"), false));
+$("#out").addEventListener("click", e => {
+  const el = e.target.closest(".box,.blk");
+  if (!el) return;
+  const sheet = $("#p" + (WHOLE ? 0 : el.dataset.p));
+  if (sheet) sheet.scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+// ---------------------------------------------------------------- export
+/** What a downstream pipeline would actually keep: one markdown file for the document. */
+function markdown(){
+  const parts = [];
+  RESULTS.forEach((p, i) => {
+    if (!p) return;
+    if (!WHOLE && RESULTS.length > 1) parts.push(`\n<!-- page ${i+1} -->\n`);
+    (p.blocks || []).filter(keep).forEach(b => {
+      const c = b.content.trim();
+      parts.push(b.label === "title" ? `## ${c}\n` : `${c}\n`);
+    });
   });
+  return parts.join("\n").trim() + "\n";
 }
+$("#copy").onclick = () => navigator.clipboard.writeText(markdown()).then(() => {
+  $("#outnote").textContent = "copied"; setTimeout(draw, 1200); });
+$("#save").onclick = () => {
+  const blob = new Blob([markdown()], {type:"text/markdown"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "ocr.md"; a.click();
+  URL.revokeObjectURL(a.href);
+};
 </script>
 </body></html>

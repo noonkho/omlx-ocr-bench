@@ -16,3 +16,10 @@ PROMPT = os.environ.get("OMLX_OCR_PROMPT", "Multi page parsing.")
 
 #: Render DPI. 150 is enough for typed English; Traditional Chinese benefits from more.
 DPI = int(os.environ.get("OMLX_OCR_DPI", "150"))
+
+#: The knob that stops a near-empty page repeating itself to the token cap.
+#:
+#: Measured, not guessed — see README. At 0.8 a blank-ish page ends in 1.5s instead of running to
+#: the cap, and a dense page comes back BYTE-IDENTICAL to no penalty at all. The model's official
+#: pipeline uses `no_repeat_ngram_size=35` instead, which oMLX accepts and then ignores.
+FREQUENCY_PENALTY = float(os.environ.get("OMLX_OCR_FREQUENCY_PENALTY", "0.8"))
