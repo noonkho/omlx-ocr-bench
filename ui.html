@@ -202,15 +202,12 @@ pre.out .det{color:var(--muted);opacity:.75}
       <div class="grp">
         <label for="prompt">Prompt</label>
         <textarea id="prompt" spellcheck="false"></textarea>
-        <div class="chips">
-          <button class="ghost" data-p="Multi page parsing.">Multi page</button>
-          <button class="ghost" data-p="document parsing.">Document</button>
-          <button class="ghost" data-p="Free OCR.">Free OCR</button>
-          <button class="ghost" data-p="Extract the text in the image.">Text only</button>
-        </div>
+        <select id="preset" style="margin-top:7px"></select>
+        <p class="hint" id="presethint"></p>
         <p class="hint"><b>Do not start it with <code>&lt;image&gt;</code>.</b> oMLX adds its own
           image placeholder, so a literal one makes two placeholders for one image and the server
-          returns HTTP 500. Measured.</p>
+          returns HTTP 500. Measured. Some models ignore the prompt entirely — chandra returned
+          byte-identical output to five different ones.</p>
       </div>
 
       <details class="grp" id="conn" open>
@@ -270,7 +267,7 @@ pre.out .det{color:var(--muted);opacity:.75}
           <div><label class="lbl" for="mode">Requests</label>
             <select id="mode">
               <option value="page">one per page</option>
-              <option value="stitch">all pages, one tall image</option>
+              <option value="stitch">2 pages per image</option>
               <option value="whole">all pages, many images</option>
             </select></div>
         </div>
@@ -293,18 +290,20 @@ pre.out .det{color:var(--muted);opacity:.75}
     <div class="body guide" id="pane-guide" hidden>
       <h3>Prompt</h3>
       <p>The instruction sent with the page. OCR models are trained on a handful of exact
-        phrases, so a "better written" prompt usually works worse. Use the presets.
+        phrases, so a "better written" prompt usually works worse. The presets are grouped by
+        model, with the one you have selected first. Some models ignore the prompt completely.
         <span class="try">Never start it with <code>&lt;image&gt;</code> — oMLX adds its own, and
           two placeholders for one image returns HTTP 500.</span></p>
 
       <h3>Requests</h3>
-      <p><b>One per page</b> is the safe default. <b>All pages, one tall image</b> joins the pages
-        and sends that as a single picture; the bench puts each answer back on the page it came
+      <p><b>One per page</b> is the safe default. <b>2 pages per image</b> joins pages in pairs
+        and sends each pair as one picture; the bench puts each answer back on the page it came
         from. <b>All pages, many images</b> is what the model card describes and what oMLX cannot
         do yet.
-        <span class="try">The many-images mode silently reads only page one. The tall-image mode
-          really does read them all — but on this model it is unstable: the same request can come
-          back clean or stuck in a loop. Treat it as an experiment.</span></p>
+        <span class="try">The many-images mode silently reads only page one. Pairs really are
+          read in full — but a taller stitch is not: at 16 pages the model found 7 of 16 marker
+          lines, at 64 it found 3. There is no "send the whole book" setting, and that is
+          measured, not a policy.</span></p>
 
       <h3><code>temperature</code></h3>
       <p>How much randomness. 0 means "always the most likely next token", which is what you want
@@ -416,7 +415,7 @@ const KNOBS = ["temperature","max_tokens","top_p","top_k","min_p","seed",
 
 /** Colours and the junk taxonomy come from the server, so `ocr.py` is the only place that
  *  decides what a block kind is called or whether it is worth keeping. */
-let COLOURS = {}, JUNK = new Set();
+let COLOURS = {}, JUNK = new Set(), FAMILIES = [];
 let JOB = null, PAGES = [], RESULTS = [], LIVE = {}, ES = null, MODELS = [], WHOLE = false;
 /** Finished pages never change, so their HTML is rendered once and reused on every repaint. */
 const CACHE = new Map();
@@ -444,14 +443,15 @@ fetch("/api/defaults").then(r => r.json()).then(d => {
   $("#url").value = d.base_url; $("#key").value = d.api_key;
   $("#prompt").value = d.prompt; $("#dpi").value = d.dpi;
   $("#model").innerHTML = `<option>${esc(d.model)}</option>`;
-  COLOURS = d.colours || {}; JUNK = new Set(d.junk || []);
+  COLOURS = d.colours || {}; JUNK = new Set(d.junk || []); FAMILIES = d.families || [];
+  fillPresets();
   Object.entries(d.knobs || {}).forEach(([k, v]) => { if ($("#" + k)) $("#" + k).value = v; });
   test();
 });
 
 // ---------------------------------------------------------------- connection
 $("#test").onclick = test;
-$("#model").onchange = modelNote;
+$("#model").onchange = () => { modelNote(); fillPresets(); };
 $("#mode").onchange = modeNote;
 modeNote();
 
@@ -469,21 +469,39 @@ async function test(){
   if (r.models.some(m => m.id === want)) $("#model").value = want;
   modelNote();
 }
-/** The prompt each model family was actually trained on. Using the wrong one costs more accuracy
- *  than any sampling knob, so the bench offers the right one rather than guessing silently. */
-const PROMPTS = [
-  [/unlimited/i, "Multi page parsing."],
-  [/qianfan|paddle/i, "document parsing."],
-  [/dots|mineru|logics/i, "Parse the layout of this document."],
-  [/chandra|olm|nanonets|got-ocr|glm-ocr|deepseek-ocr/i, "Convert this page to markdown."],
-];
 /** Names that are not OCR models at all, so the answer will not have layout in it. */
 const NOT_OCR = /embed|rerank|whisper|tts|markitdown/i;
 
-function suggested(id){
-  for (const [re, prompt] of PROMPTS) if (re.test(id)) return prompt;
-  return null;
+/** Which family the chosen model belongs to. Served from Python — see `ocr.FAMILIES`. */
+function family(id){
+  return FAMILIES.find(f => f.match && new RegExp(f.match, "i").test(id))
+      || FAMILIES[FAMILIES.length - 1];
 }
+function suggested(id){
+  const f = family(id);
+  return f && f.prompts.length ? f.prompts[0][0] : null;
+}
+
+/** One dropdown for every prompt the bench knows, grouped by the model each belongs to, with the
+ *  chosen model's group first so the right answer is the nearest one. */
+function fillPresets(){
+  const id = $("#model").value, mine = family(id);
+  const order = [mine, ...FAMILIES.filter(f => f !== mine)];
+  $("#preset").innerHTML =
+    `<option value="">Prompt presets…</option>` +
+    order.map(f => `<optgroup label="${esc(f.name)}${f === mine ? " — this model" : ""}">` +
+      f.prompts.map(([prompt, why]) =>
+        `<option value="${esc(prompt)}" data-why="${esc(why)}">${esc(prompt)}</option>`).join("") +
+      `</optgroup>`).join("");
+}
+$("#preset").onchange = e => {
+  const opt = e.target.selectedOptions[0];
+  if (!opt || !opt.value) return;
+  $("#prompt").value = opt.value;
+  $("#presethint").textContent = opt.dataset.why || "";
+  e.target.value = "";
+  modelNote();
+};
 function modelNote(){
   const id = $("#model").value;
   const m = MODELS.find(x => x.id === id) || {};
@@ -498,10 +516,8 @@ function modelNote(){
       markers, a JSON layout, or plain markdown. A model that returns no coordinates gets a text
       score and no position score.`;
   if (want && want !== $("#prompt").value)
-    note += ` <a href="#" id="useprompt">Use its own prompt: <code>${esc(want)}</code></a>`;
+    note += ` Its own prompt is <code>${esc(want)}</code> — first in the preset list.`;
   $("#modelhint").innerHTML = note;
-  const link = $("#useprompt");
-  if (link) link.onclick = e => { e.preventDefault(); $("#prompt").value = want; modelNote(); };
 }
 function modeNote(){
   const mode = $("#mode").value;
@@ -512,10 +528,11 @@ function modeNote(){
          the rest silently. Kept so you can reproduce it: watch <code>prompt_tokens</code> stay
          the same however many pages you send.`
     : mode === "stitch"
-      ? `<b>Experimental.</b> Every page joined top to bottom into <b>one tall image</b>, so there
-         is nothing for the server to drop. When it works it is several times faster than a page
-         at a time — but on this model it often falls into a repeat loop instead, and repeating
-         the same request does not give the same answer twice. Watch the runaway flag.`
+      ? `<b>Experimental.</b> Pages are joined top to bottom into one tall image, two at a time,
+         so there is nothing for the server to drop. <b>Two is the measured ceiling</b> — the
+         vision encoder spends the same token budget however tall the picture is, so a taller
+         stitch just makes every page smaller. It halves the request count when it works, but on
+         this model it sometimes falls into a repeat loop instead. Watch the runaway flag.`
       : "";
 }
 
@@ -573,10 +590,6 @@ fetch("/api/samples").then(r => r.json()).then(d => {
     take(new File([buf], r.name));
   });
 });
-
-// ---------------------------------------------------------------- prompt presets
-document.querySelectorAll("[data-p]").forEach(b =>
-  b.onclick = () => { $("#prompt").value = b.dataset.p; });
 
 // ---------------------------------------------------------------- run
 $("#run").onclick = () => {

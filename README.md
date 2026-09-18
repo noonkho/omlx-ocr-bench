@@ -1,4 +1,4 @@
-# OCR bench for oMLX
+# omlx-ocr-bench
 
 A three-panel workbench for running **any** OCR model served by [oMLX](https://github.com/jundot/omlx)
 against documents that come with an answer key — and scoring it on two things that fail
@@ -58,11 +58,12 @@ the oMLX box sets no CORS headers and a browser would refuse the call.
 
 ## Any OCR model, not one
 
-The bench reads three output formats and takes whichever a model gives it (`ocr.parse`):
+The bench reads four output formats and takes whichever a model gives it (`ocr.parse`):
 
 | what the model returns | example | scored on |
 |---|---|---|
 | `<\|det\|>LABEL [x0,y0,x1,y1]<\|/det\|>` markers | Unlimited-OCR and relatives | text **and** position |
+| `<div data-bbox="x0 y0 x1 y1" data-label="…">` | chandra | text **and** position |
 | a JSON list of `{bbox, category, text}` | dots.ocr, PaddleOCR-VL, most layout-first models | text **and** position |
 | plain markdown, no coordinates | many general VLMs | text only — position reads `n/a` |
 
@@ -70,8 +71,13 @@ Pixel boxes are rescaled to the 0-1000 space the bench works in. A model that re
 coordinates is not given a fake position score; it simply does not get one.
 
 Each family was also trained on its own exact prompt, and using the wrong one costs more accuracy
-than any sampling knob. Pick a model and the bench offers the right prompt in one click rather
-than changing it behind your back.
+than any sampling knob. The prompt presets are one dropdown grouped by model, with the family of
+whichever model you have selected floated to the top. That table lives in `ocr.FAMILIES`, in
+Python, so the page, the server and the one-shot CLI all read the same list — `ocr.prompt_for()`
+is what `demo.py` uses when you give it no prompt.
+
+Some models ignore the prompt completely. chandra returned byte-identical output to five different
+ones, which is worth knowing before you spend an afternoon tuning wording.
 
 ## The score
 
@@ -110,26 +116,58 @@ should mark a region there, not read it), text **invented** (matched nothing on 
 no real person, firm, school or authority. That is not only a licence question: a drawn page is
 the only kind whose answer key you can actually have.
 
-## Baseline: `Unlimited-OCR-bf16`
+## Two models, measured head to head
 
-One request per page, 150 dpi, `frequency_penalty: 0.8`, prompt `Multi page parsing.`
+One request per page, 150 dpi, the drawn sample pack, scored against its answer key.
+`Unlimited-OCR-bf16` with `frequency_penalty: 0.8` and `Multi page parsing.`;
+`chandra-ocr-2-8bit-mlx` with `Convert this page to markdown.`
 
-| sample | text | position | lines | graphics | invented | time |
-|---|---|---|---|---|---|---|
-| `gov_permit.pdf` | 88.7% | 100% | 50/63 | 5/5 | 0 | 5.3 s |
-| `scan_notice_zh.png` | 86.6% | 100% | 18/23 | 2/2 | 0 | 1.9 s |
-| `notice_zh.pdf` | 86.3% | 100% | 18/23 | 2/2 | 0 | 1.9 s |
-| `scan_permit.png` | 84.8% | 100% | 50/63 | 5/5 | 0 | 9.5 s |
-| `legal_deed.pdf` | 74.2% | 100% | 42/66 | 5/5 | 1 | 21.5 s |
-| `school_transcript.pdf` | 72.7% | 100% | 53/62 | 4/4 | 0 | 4.4 s |
-| `commercial_invoice.pdf` | 61.6% | 84.2% | 36/54 | 1/5 | 0 | 10.0 s |
+| sample | Unlimited text | chandra text | Unlimited time | chandra time |
+|---|---|---|---|---|
+| `commercial_invoice.pdf` | 61.6% | **91.2%** | **10.0 s** | 18.3 s |
+| `gov_permit.pdf` | 88.7% | **89.8%** | **5.3 s** | 20.3 s |
+| `scan_permit.png` | 84.8% | **89.8%** | **9.5 s** | 21.7 s |
+| `school_transcript.pdf` | 72.7% | **82.6%** | **4.4 s** | 19.0 s |
+| `legal_deed.pdf` | **74.2%** | 72.6% | **21.5 s** | 27.9 s |
+| `notice_zh.pdf` | **86.3%** | 79.8% | **1.9 s** | 10.9 s |
+| `scan_notice_zh.png` | **86.6%** | 80.1% | **1.9 s** | 10.9 s |
 
-Two things stand out. **Position is near perfect while text is not** — when this model reads a
-line, it knows where the line was. And **the phone-photo versions cost it almost nothing**
-(88.7 → 84.8, 86.3 → 86.6), which is not what most OCR does under bad lighting.
+Position was 100% for both on every sample but one (Unlimited-OCR, 84.2% on the invoice).
 
-The invoice is its worst page: 61.6% text and **one graphic marked out of five** — it missed the
-logo, the barcode and both signatures.
+**Read it like this.** chandra is better on English business and government layouts and much better
+on the invoice — 91.2% against 61.6%, and it marked all five graphics where Unlimited-OCR marked
+one. Unlimited-OCR is better on Traditional Chinese and is **three to four times faster on every
+single sample**. Neither is a clean winner, which is the entire argument for having a bench.
+
+### What is wrong with `Unlimited-OCR`
+
+1. **A blank page makes it count.** With nothing to read it emits `1. 2. 3. 4. 5. …` to the token
+   cap — 29 s and 8,192 tokens for an empty page. The bench measures the ink and never sends one.
+2. **A sparse page makes it loop.** Same failure, less extreme, on a page with a few lines.
+   `frequency_penalty: 0.8` fixes it at no measured cost; the knob the model's own pipeline uses,
+   `no_repeat_ngram_size`, is accepted by oMLX and ignored.
+3. **It writes things that are not on the page.** Every one of 47 pages had a loose line before
+   its first marker — on one, a date that appears nowhere in the document. On sparse pages it has
+   quoted its own annotation rulebook.
+4. **It substitutes characters:** 黄 for 黃, Bramwell for Branwell.
+5. **It cannot be sent a multi-page document at all through oMLX** — see below.
+6. **It is weak on dense small graphics.** One of five marked on the invoice.
+
+### What is wrong with `chandra-ocr-2`
+
+1. **It ignores the prompt.** Five different prompts — `Convert this page to markdown.`,
+   `document parsing.`, `Free OCR.`, `Multi page parsing.`, `OCR this document.` — returned
+   byte-identical output. Nothing you write in that box will change what it does.
+2. **It is slow.** 10–28 s a page against 2–22 s, and it never dips below 10 s even on the
+   Chinese notice that Unlimited-OCR reads in 1.9 s. It also costs more to prompt: 2,165 input
+   tokens for a page that costs Unlimited-OCR 909.
+3. **It answers in a fourth format** — `<div data-bbox="62 36 140 100" data-label="Image">` —
+   which nothing else emits. The bench reads it now; before it did, chandra scored as if it had
+   returned no layout at all. Worth knowing if you write your own client.
+4. **It is weaker on Chinese**, by six or seven points on both Chinese samples.
+5. **It invents occasionally:** one spurious block on three of the seven samples.
+
+Neither model's problems are oMLX's fault, except the multi-page one, which is entirely oMLX's.
 
 ## Models worth trying next
 
@@ -220,32 +258,47 @@ The cause is named in the PR that added the model
 prompt semantics", i.e. one placeholder however many images arrive. That also explains §6.
 
 The bench keeps that mode (**Run → Requests → all pages, many images**) so the bug is one click to
-reproduce, and so it starts working the day oMLX fixes it.
+reproduce, and so it starts working the day oMLX fixes it. It is filed as
+[omlx#3740](https://github.com/jundot/omlx/issues/3740); [omlx#2331](https://github.com/jundot/omlx/issues/2331)
+asks for the processor settings the model's own multi-page mode needs.
 
-### 5b. Stitching the pages into one tall image gets round it — unreliably
+### 5b. Stitching pages into one tall image — how far does it go?
 
-If oMLX only passes the first image, send one image: every page joined top to bottom. The bench
-does this under **Requests → all pages, one tall image**, and puts each block back on the page it
-was drawn on afterwards, so the overlay and the score still work per page.
+If oMLX only passes the first image, send one image: pages joined top to bottom. The bench does
+that under **Requests → 2 pages per image**, and puts each block back on the page it was drawn on
+afterwards, so the overlay and the score still work per page.
 
-It demonstrably reads the whole document — `prompt_tokens` went from 909 for one page to 1539 for
-two, and text from both pages came back. The first run of the three-page deed took **6.1 s against
-21.1 s** page-by-page and scored *higher* on text (79.6% vs 74.2%).
+**So can you stitch a 400-page bundle into one image? No — and not because of the context window.**
+Each page carries a unique marker line; stitch N pages and count how many markers come back:
 
-**And then it would not do it again.** Repeating the same request at `temperature: 0`:
+| pages | image | input tokens | time | markers found |
+|---|---|---|---|---|
+| 1 | 1241×1,755 | 909 | 6.2 s | 1/1 |
+| 2 | 1241×3,510 | 1,539 | 5.9 s | **2/2** |
+| 4 | 1241×7,020 | 2,589 | 14.2 s | 3/4 |
+| 8 | 1241×14,040 | 1,489 | 23.1 s | 7/8 |
+| 16 | 1241×28,080 | 2,809 | 119.1 s | 7/16 |
+| 32 | 1241×56,160 | 3,799 | 94.2 s | 12/32 |
+| 64 | 1241×112,320 | 3,799 | 98.7 s | **3/64**, and it looped |
 
-| run | result |
-|---|---|
-| deed, 3 pages, first attempt | 6.1 s, text 79.6%, no loop |
-| deed, 3 pages, ×3 after that | ~10 s, text 45%, **all three pages flagged as loops** |
-| deed, pages 1+2 only, earlier | 5.6 s, clean, both pages read |
-| deed, pages 1+2 only, later | 33.8 s, 23 distinct lines out of 237 — a loop |
+Look at the token column. It stops growing — 3,799 at 32 pages and 3,799 at 64. **The vision
+encoder spends a fixed budget on the picture however tall it is**, so every page you add makes
+every page smaller, until the text is below the resolution the model can read. At 64 pages the
+image is also 139 megapixels, which trips PIL's decompression-bomb guard.
 
-Raising `max_tokens` to 12288 did not help. Same server, same model, same bytes, different answer.
-So the honest summary is: **stitching is the only way to send a whole document to this model today,
-it is several times faster when it lands, and it cannot be relied on.** It ships switched off, with
-the runaway guard watching it. It may well behave better on a model that is not this one — which is
-the reason the bench now takes any model.
+The ceiling is **two pages**. Four already loses one. A 400-page bundle would be a grey smear.
+
+So the bench batches in pairs rather than pretending otherwise — and whether that is worth it
+depends on the model:
+
+| 3-page deed | per page | in pairs |
+|---|---|---|
+| `Unlimited-OCR-bf16` | 21.3 s, text 74.2% | 19.5 s, text **41.3%**, three pages flagged as loops |
+| `chandra-ocr-2-8bit-mlx` | 24.7 s, text 72.6% | 22.8 s, text 69.1%, no loops |
+
+chandra takes a stitched pair in its stride. Unlimited-OCR falls apart on one, because the deed's
+third page is the sparse divider and sparseness is what makes that model loop. It ships switched
+off for that reason.
 
 ### 6. The documented prompt returns HTTP 500
 

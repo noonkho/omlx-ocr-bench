@@ -46,6 +46,37 @@ COLOURS = {
 JUNK = {"noise", "unboxed"}
 
 
+#: The prompts each model family was actually trained on, in Python so the bench, the page and
+#: the one-shot CLI cannot drift apart. `match` is a case-insensitive regex against the model id;
+#: the last entry matches everything and is the fallback.
+FAMILIES = [
+    {"name": "Unlimited-OCR", "match": r"unlimited", "prompts": [
+        ("Multi page parsing.", "the one the model card documents; best on dense pages"),
+        ("document parsing.", "calmer on sparse pages, but has invented text on dense ones"),
+        ("Free OCR.", "text only, no layout"),
+        ("Extract the text in the image.", "text only, plainer wording"),
+    ]},
+    {"name": "chandra", "match": r"chandra", "prompts": [
+        ("Convert this page to markdown.", "measured: this model ignores the prompt entirely"),
+    ]},
+    {"name": "PaddleOCR-VL / Qianfan", "match": r"paddle|qianfan|ernie", "prompts": [
+        ("document parsing.", "the documented prompt for both"),
+        ("OCR:", "text only"),
+    ]},
+    {"name": "dots.ocr / MinerU", "match": r"dots|mineru|logics", "prompts": [
+        ("Parse the layout of this document.", "layout-first, returns JSON"),
+        ("document parsing.", "worth trying if the first returns prose"),
+    ]},
+    # The last entry is the fallback: no pattern, matches by being last.
+    {"name": "Anything else", "match": None, "prompts": [
+        ("Convert this page to markdown.", "the safest opening move on an unknown model"),
+        ("Extract all text from this document.", "text only"),
+        ("Read this page. Return each block of text with a bounding box.",
+         "asks for coordinates; most general VLMs will not give them"),
+    ]},
+]
+
+
 #: The sampling knobs every caller starts from. Measured — see README on `frequency_penalty`.
 DEFAULT_KNOBS = {"max_tokens": 4096, "temperature": 0,
                  "frequency_penalty": config.FREQUENCY_PENALTY}
@@ -120,6 +151,23 @@ def split_blocks(blocks: list[Block], heights: list[int]) -> list[list[Block]]:
     return pages
 
 
+def kind_of(content: str, default: str) -> str:
+    """A block's kind, downgraded to `noise` when its text is something the model made up.
+
+    Every parser asks this, because every format can carry the same two failures: a bare counter,
+    and the model reciting its own annotation rulebook. See `parse`.
+    """
+    return "noise" if _COUNTER.match(content.strip()) or _LEAK.search(content) else default
+
+
+def prompt_for(model: str) -> str:
+    """The prompt this model was trained on. One table, used by the bench, the page and the CLI."""
+    for fam in FAMILIES:
+        if fam["match"] and re.search(fam["match"], model, re.IGNORECASE):
+            return fam["prompts"][0][0]
+    return FAMILIES[-1]["prompts"][0][0]
+
+
 def strip_markers(text: str) -> str:
     """The words without the `<|det|>` markers. Their coordinates differ on every repeat, so a
     repeat test has to look at what the markers WRAP, not at the markers themselves."""
@@ -190,10 +238,12 @@ def parse(raw: str) -> list[Block]:
     """Whatever an OCR model returned, as blocks. Three formats, tried in order.
 
     1. `<|det|>LABEL [x0, y0, x1, y1]<|/det|>` markers — Unlimited-OCR and its relatives.
-    2. A JSON list of `{"bbox": [...], "category": ..., "text": ...}` — dots.ocr, PaddleOCR-VL
+    2. `<div data-bbox="x0 y0 x1 y1" data-label="Text">…</div>` — chandra and the other models
+       that answer in annotated HTML. Already 0-1000 normalised.
+    3. A JSON list of `{"bbox": [...], "category": ..., "text": ...}` — dots.ocr, PaddleOCR-VL
        and most of the layout-first models. Pixel boxes are rescaled to 0-1000 when they are
        plainly out of range.
-    3. Plain markdown, which many models return with no coordinates at all. Those blocks are
+    4. Plain markdown, which many models return with no coordinates at all. Those blocks are
        marked `boxed=False`, so the bench scores their words and reports no position.
 
     Text before the first marker is kept as its own block and flagged — see below.
@@ -203,6 +253,8 @@ def parse(raw: str) -> list[Block]:
         return []
     if _DET.search(raw):
         return _parse_det(raw)
+    if _BBOX.search(raw):
+        return _parse_bbox_html(raw)
     blocks = _parse_json(raw)
     return blocks if blocks else _parse_markdown(raw)
 
@@ -232,13 +284,39 @@ def _parse_det(raw: str) -> list[Block]:
             continue
         end = marks[i + 1].start() if i + 1 < len(marks) else len(raw)
         content = raw[m.end():end].strip()
-        label = m.group(1).lower()
-        if _COUNTER.match(content.strip()) or _LEAK.search(content):
-            label = "noise"                  # the counter, or the model's own rulebook
-        block = Block(label, tuple(nums), content)  # type: ignore[arg-type]
+        block = Block(kind_of(content, m.group(1).lower()), tuple(nums), content)  # type: ignore[arg-type]
         if out and out[-1].label == block.label and out[-1].content == block.content:
             continue                                     # the same read, twice
         out.append(block)
+    return out
+
+
+#: `<div data-bbox="62 36 140 100" data-label="Image">` — chandra's annotated HTML. Matched as a
+#: marker rather than a tag pair, so a nested tag of the same name cannot end a block early.
+_BBOX = re.compile(r"""<\w+[^>]*?\sdata-bbox=["']\s*([\d\s.]+?)["']([^>]*)>""", re.IGNORECASE)
+_LABEL = re.compile(r"""data-label=["']([^"']*)["']""", re.IGNORECASE)
+_TAG = re.compile(r"<[^>]+>")
+
+
+def _parse_bbox_html(raw: str) -> list[Block]:
+    """Annotated HTML. The coordinates are already in this bench's 0-1000 space."""
+    out: list[Block] = []
+    marks = list(_BBOX.finditer(raw))
+    for i, m in enumerate(marks):
+        nums = [float(n) for n in re.findall(r"[\d.]+", m.group(1))]
+        if len(nums) != 4:
+            continue
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(raw)
+        content = raw[m.end():end].strip()
+        if content.endswith("</div>"):
+            content = content[: -len("</div>")].rstrip()
+        if "<table" not in content.lower():
+            # Keep table markup; drop the wrapper tags around ordinary text.
+            content = html.unescape(_TAG.sub(" ", re.sub(r"<br\s*/?>", "\n", content))).strip()
+            content = re.sub(r"[ \t]{2,}", " ", content)
+        label = (_LABEL.search(m.group(2)) or [None, m.group(0).split()[0].lstrip("<")])[1]
+        out.append(Block(kind_of(content, str(label).lower()),
+                         tuple(round(n) for n in nums), content))  # type: ignore[arg-type]
     return out
 
 
@@ -290,8 +368,9 @@ def _parse_markdown(raw: str) -> list[Block]:
         if not chunk:
             continue
         label = "title" if chunk.startswith("#") else "table" if chunk.startswith("<table") \
-            else "noise" if _COUNTER.match(chunk) or _LEAK.search(chunk) else "text"
-        out.append(Block(label, (0, 0, 1000, 1000), chunk.lstrip("# ").strip(), boxed=False))
+            else "text"
+        out.append(Block(kind_of(chunk, label), (0, 0, 1000, 1000),
+                         chunk.lstrip("# ").strip(), boxed=False))
     return out
 
 
@@ -322,8 +401,13 @@ def render_pages(path: Path, dpi: int = config.DPI) -> list[tuple[bytes, tuple[i
 
 
 def ocr_page(png: bytes, size: tuple[int, int], index: int,
-             prompt: str = config.PROMPT, max_tokens: int = 4096) -> PageResult:
-    """One page, one request. Never raises — a page that fails carries its own error."""
+             prompt: str | None = None, max_tokens: int = 4096) -> PageResult:
+    """One page, one request. Never raises — a page that fails carries its own error.
+
+    With no prompt given, the one this model was trained on is used — see `FAMILIES`. Sending
+    Unlimited-OCR's prompt to chandra is the single cheapest way to lose accuracy.
+    """
+    prompt = prompt or prompt_for(config.MODEL)
     result = PageResult(index=index, png=png, size=size)
     body = build_body(config.MODEL, prompt, [data_url(png)],
                       dict(DEFAULT_KNOBS, max_tokens=max_tokens))

@@ -2,7 +2,13 @@
 
 Each section below is one complete issue. Copy everything under its rule. Replace the version
 numbers if yours differ, and **search the tracker first** in case someone got there before you.
-Neither of these appeared in the tracker on 2026-09-18.
+
+**Status:** Issue 1 is filed as [omlx#3740](https://github.com/jundot/omlx/issues/3740). Issue 2
+was not in the tracker as of 2026-09-19. Related and already open:
+[omlx#2331](https://github.com/jundot/omlx/issues/2331) asks for the VLM processor settings that
+Unlimited-OCR's own multi-page mode needs, and
+[omlx#2424](https://github.com/jundot/omlx/issues/2424) reports garbled Chinese from the same
+model — which matches the 黄/黃 substitution measured here.
 
 ---
 ---

@@ -52,6 +52,11 @@ KNOBS: dict[str, type] = {
 #: one-shot CLI cannot drift apart.
 DEFAULT_KNOBS = ocr.DEFAULT_KNOBS
 
+#: How many pages go into one stitched image. Two is the measured ceiling: the vision encoder
+#: spends a fixed token budget on the picture however tall it is, so at four pages one page is
+#: already lost and at sixteen more than half are. See the README.
+STITCH_PAGES = 2
+
 #: How often a streaming answer is pushed to the browser. One frame per token would cost a JSON
 #: encode, an HTTP chunk and a flush each; at 60 ms the answer still appears to stream.
 FLUSH_SECONDS = 0.06
@@ -167,7 +172,8 @@ class Handler(BaseHTTPRequestHandler):
             # knob defaults, and the block taxonomy the parser uses.
             self._json(200, {"base_url": config.BASE_URL, "api_key": config.API_KEY,
                              "model": config.MODEL, "prompt": config.PROMPT, "dpi": config.DPI,
-                             "knobs": DEFAULT_KNOBS, "colours": COLOURS, "junk": sorted(JUNK)})
+                             "knobs": DEFAULT_KNOBS, "colours": COLOURS, "junk": sorted(JUNK),
+                             "families": ocr.FAMILIES})
         elif url.path == "/api/samples":
             # Whatever `samples/make_samples.py` last drew, with its own labels. Drawn on
             # purpose: no real document, and no real person's name, ever.
@@ -273,8 +279,8 @@ class Handler(BaseHTTPRequestHandler):
             value = settings.get(name)
             return fallback if value in (None, "") else value
 
-        prompt = one("prompt", config.PROMPT)
         model = one("model", config.MODEL)
+        prompt = one("prompt", "") or ocr.prompt_for(model)
         base = one("base_url", config.BASE_URL)
         key = one("api_key", config.API_KEY)
         guard = str(one("guard", "1")) == "1"
@@ -322,10 +328,18 @@ class Handler(BaseHTTPRequestHandler):
             emit("done", {"seconds": 0, "score": None, "model": model})
             return
         if mode == "stitch":
-            # Every page as ONE tall image. oMLX drops every image after the first, so the way
-            # to send a whole document in one request is to send one image. Measured to work.
-            tall, heights = stitch([meta["png"][i] for i in keep])
-            groups, stitched = [[data_url(tall)]], (keep, heights)
+            # Pages joined into ONE tall image, a few at a time. oMLX drops every image after the
+            # first, so one image is the only way to cover several pages in a request.
+            #
+            # The batch is small on purpose. Measured (see README): the vision encoder spends a
+            # fixed token budget on the picture however tall it is, so every page added makes
+            # every page smaller. Two pages is reliable, four already loses one, sixteen loses
+            # more than half. So this batches rather than stitching the whole document.
+            # The chunks are worked out here but each tall image is built only when its turn
+            # comes — stitching a whole document up front is seconds of dead time before the
+            # first token, and all of it wasted if the browser goes away.
+            stitched = [keep[at:at + STITCH_PAGES] for at in range(0, len(keep), STITCH_PAGES)]
+            groups = [[] for _ in stitched]
         elif mode == "whole":
             groups, stitched = [[urls[i] for i in keep]], None
         else:
@@ -345,16 +359,21 @@ class Handler(BaseHTTPRequestHandler):
                         "runaway": False, "raw": "", "usage": {}, "images": 0, "blocks": []}):
                     return
         for i, group in enumerate(groups):
-            if not group:
+            if not group and not stitched:
                 if not emit("page", {"index": i, "blank": True, "seconds": 0, "error": "",
                                      "finish": "blank", "runaway": False, "raw": "",
                                      "usage": {}, "images": 0, "blocks": []}):
                     return
                 continue
+            if stitched:
+                tall, heights = stitch([meta["png"][p] for p in stitched[i]])
+                group, chunk = [data_url(tall)], (stitched[i], heights)
+            else:
+                chunk = None
             if not emit("page_start", {"index": i, "images": len(group)}):
                 return
             if not self.run_one(i, group, emit, base, key, model, prompt, knobs, guard,
-                                meta.get("truth") or [], scores, stitched):
+                                meta.get("truth") or [], scores, chunk):
                 return
         emit("done", {"seconds": round(time.time() - run_t0, 2),
                       "score": score.combine(scores) if scores else None,
