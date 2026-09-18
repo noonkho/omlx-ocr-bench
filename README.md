@@ -4,10 +4,24 @@ A small, throwaway harness to answer that with pictures rather than opinions. Se
 Feenote repo on purpose — nothing here touches a case folder, and every sample is synthetic.
 
 ```bash
-uv run demo.py samples/synthetic_hk.pdf --open     # PDF, 2 pages
-uv run demo.py samples/synthetic_zh.png --open     # Traditional Chinese, as an image
+uv run server.py        # the three-panel bench -> http://127.0.0.1:4700
+uv run demo.py samples/synthetic_hk.pdf --open     # one-shot, writes a static HTML page
 uv run test_multipage.py                           # can one request carry several pages?
 ```
+
+**The bench** (`server.py` + `ui.html`) is the thing to use. Three panels:
+
+* **left** — base URL, API key and a **Test connection** button that lists every model the server
+  has, so the right one can be picked and a wrong one is called out; the prompt, with presets;
+  drag-and-drop or click to upload a PDF or image; DPI, max tokens and the runaway guard.
+* **middle** — what the model returned, as plain text, rendered, or raw with the `<|det|>` markers.
+* **right** — each page with the model's own layout boxes drawn on it. Hover a box to highlight
+  its text, and the other way round.
+
+Pages stream in one at a time, so a long document shows progress instead of hanging. Everything
+goes through the local process because the oMLX box sets no CORS headers.
+
+Two synthetic samples are built in — click them in the left panel.
 
 Server and model come from env vars (`config.py`): `OMLX_BASE_URL`, `OMLX_API_KEY`,
 `OMLX_OCR_MODEL`, `OMLX_OCR_DPI`, `OMLX_OCR_PROMPT`.
@@ -66,7 +80,10 @@ supports multi-image messages, one page per request stands.**
 The second page of the sample holds four short lines. The model emits `1. 2. 3. 4. 5. …` until it
 hits the output cap — **29 s and 8,192 wasted tokens on a nearly blank page**.
 
-Sampling penalties do not fix it:
+**The cause is known.** The official pipeline runs the model with `no_repeat_ngram_size=35` and
+`ngram_window=128` — an n-gram logits processor that forbids repeating any 35-token sequence.
+**`mlx-vlm` does not implement it.** The only knob it exposes is `repetition_penalty`, which is
+the wrong tool (a document legitimately repeats words) and does not work here:
 
 | Setting | Result |
 |---|---|
@@ -74,9 +91,13 @@ Sampling penalties do not fix it:
 | `presence_penalty: 0.4` | unchanged |
 | `repetition_penalty: 1.08` | becomes `1.2.3. 2.3.4. 2.3.5. …`, still to the cap |
 
-So a caller needs its own guard: a modest `max_tokens` for OCR, and a check that discards output
-which is mostly one repeated pattern. In a real bundle — separator pages, blank backs of scans,
-exhibit dividers — this would otherwise be a large share of the run.
+So until `mlx-vlm` gains the n-gram processor, a caller needs its own guard. The bench ships one
+(`server.looks_runaway`): if a long answer is made of very few DISTINCT tokens, it is not a
+document, and the page is refused rather than stored. Plus a modest `max_tokens` — 4096, not
+16384 — so a page that does run away costs seconds instead of a minute.
+
+In a real bundle — separator pages, blank backs of scans, exhibit dividers — this would otherwise
+be a large share of the run.
 
 ### 6. Yes, it reads plain images
 
@@ -93,3 +114,10 @@ picture regions (`[Non-Text]`), so a figure is marked rather than silently skipp
   remove the per-page loop.
 * **Needs a runaway guard before it is safe** on real bundles.
 * Keep the 500-causing `<image>` prefix out of the prompt template.
+
+## The oMLX bug
+
+`OMLX-BUG-REPORT.md` is a ready-to-post issue for https://github.com/jundot/omlx/issues, with the
+`prompt_tokens` table, the 500 matrix and a minimal reproduction. oMLX's README claims multi-image
+chat support, so this is a bug rather than a missing feature — worth filing, because if it is
+fixed the per-page loop goes away.
