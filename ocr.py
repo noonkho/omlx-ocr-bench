@@ -46,11 +46,18 @@ COLOURS = {
 JUNK = {"noise", "unboxed"}
 
 
-#: The prompts each model family was actually trained on, in Python so the bench, the page and
-#: the one-shot CLI cannot drift apart. `match` is a case-insensitive regex against the model id;
-#: the last entry matches everything and is the fallback.
+#: What each model family needs: the prompts it was trained on, and any sampling knob that is
+#: right for it and wrong for the others. In Python so the bench, the page and the one-shot CLI
+#: cannot drift apart. `match` is a case-insensitive regex against the model id; the last entry
+#: has no pattern and is the fallback.
+#:
+#: The `knobs` are the part worth reading. `frequency_penalty: 0.8` is what stops Unlimited-OCR
+#: repeating a line to the token cap, and it is measured to cost that model nothing. Applied to
+#: PaddleOCR-VL it takes the school transcript from 68.4% down to 56.0%. One model's cure is
+#: another model's damage, so it is attached to the model rather than to the bench.
 FAMILIES = [
-    {"name": "Unlimited-OCR", "match": r"unlimited", "prompts": [
+    {"name": "Unlimited-OCR", "match": r"unlimited",
+     "knobs": {"frequency_penalty": config.FREQUENCY_PENALTY}, "prompts": [
         ("Multi page parsing.", "the one the model card documents; best on dense pages"),
         ("document parsing.", "calmer on sparse pages, but has invented text on dense ones"),
         ("Free OCR.", "text only, no layout"),
@@ -63,9 +70,17 @@ FAMILIES = [
          "the opening line of chandra's own OCR_LAYOUT_PROMPT"),
         ("OCR this image to HTML.", "the opening line of chandra's own OCR_PROMPT"),
     ]},
+    # PaddleOCR-VL is the recognition half of a two-stage pipeline: a layout model crops the
+    # page, and each crop arrives with the task named. Given a whole page instead, `Spotting:` is
+    # the one that reads all of it and grounds every line — measured, it is worth 30 points on a
+    # page of free text over anything else tried.
     {"name": "PaddleOCR-VL / Qianfan", "match": r"paddle|qianfan|ernie", "prompts": [
-        ("document parsing.", "the documented prompt for both"),
-        ("OCR:", "text only"),
+        ("Spotting:", "the documented prompt for a whole page: every line, with its box"),
+        ("OCR:", "text only, no coordinates, and it reads less of the page"),
+        ("Table Recognition:", "for a cropped table — returns OTSL"),
+        ("Formula Recognition:", "for a cropped formula — returns LaTeX"),
+        ("Chart Recognition:", "for a cropped chart"),
+        ("Seal Recognition:", "for a cropped stamp or chop"),
     ]},
     {"name": "dots.ocr / MinerU", "match": r"dots|mineru|logics", "prompts": [
         ("Parse the layout of this document.", "layout-first, returns JSON"),
@@ -81,9 +96,26 @@ FAMILIES = [
 ]
 
 
-#: The sampling knobs every caller starts from. Measured — see README on `frequency_penalty`.
-DEFAULT_KNOBS = {"max_tokens": 4096, "temperature": 0,
-                 "frequency_penalty": config.FREQUENCY_PENALTY}
+#: What every model starts from, before its family adds anything. See `FAMILIES`.
+DEFAULT_KNOBS = {"max_tokens": 4096, "temperature": 0}
+
+
+def family_of(model: str) -> dict:
+    """The entry in `FAMILIES` this model belongs to. The last one is the fallback."""
+    for fam in FAMILIES:
+        if fam["match"] and re.search(fam["match"], model, re.IGNORECASE):
+            return fam
+    return FAMILIES[-1]
+
+
+def knobs_for(model: str) -> dict:
+    """The sampling defaults for this model — the shared ones plus whatever its family needs."""
+    return dict(DEFAULT_KNOBS, **family_of(model).get("knobs", {}))
+
+
+def _unboxed(content: str, kind: str = "text") -> Block:
+    """A block the model gave no coordinates for. The box is a stand-in; `boxed` is the truth."""
+    return Block(kind_of(content, kind), (0, 0, 1000, 1000), content, boxed=False)
 
 
 def ink(png: bytes) -> float:
@@ -166,10 +198,7 @@ def kind_of(content: str, default: str) -> str:
 
 def prompt_for(model: str) -> str:
     """The prompt this model was trained on. One table, used by the bench, the page and the CLI."""
-    for fam in FAMILIES:
-        if fam["match"] and re.search(fam["match"], model, re.IGNORECASE):
-            return fam["prompts"][0][0]
-    return FAMILIES[-1]["prompts"][0][0]
+    return family_of(model)["prompts"][0][0]
 
 
 def strip_markers(text: str) -> str:
@@ -244,10 +273,11 @@ def parse(raw: str) -> list[Block]:
     1. `<|det|>LABEL [x0, y0, x1, y1]<|/det|>` markers — Unlimited-OCR and its relatives.
     2. `<div data-bbox="x0 y0 x1 y1" data-label="Text">…</div>` — chandra and the other models
        that answer in annotated HTML. Already 0-1000 normalised.
-    3. A JSON list of `{"bbox": [...], "category": ..., "text": ...}` — dots.ocr, PaddleOCR-VL
-       and most of the layout-first models. Pixel boxes are rescaled to 0-1000 when they are
-       plainly out of range.
-    4. Plain markdown, which many models return with no coordinates at all. Those blocks are
+    3. `TEXT<|LOC_160|><|LOC_42|>…` — PaddleOCR-VL, which puts the words first and then eight
+       numbers: the four corners of the quadrilateral around them, 0-1000 normalised.
+    4. A JSON list of `{"bbox": [...], "category": ..., "text": ...}` — dots.ocr and most of the
+       other layout-first models. Pixel boxes are rescaled to 0-1000 when out of range.
+    5. Plain markdown, which many models return with no coordinates at all. Those blocks are
        marked `boxed=False`, so the bench scores their words and reports no position.
 
     Text before the first marker is kept as its own block and flagged — see below.
@@ -259,6 +289,8 @@ def parse(raw: str) -> list[Block]:
         return _parse_det(raw)
     if _BBOX.search(raw):
         return _parse_bbox_html(raw)
+    if _LOC.search(raw):
+        return _parse_loc(raw)
     blocks = _parse_json(raw)
     return blocks if blocks else _parse_markdown(raw)
 
@@ -324,6 +356,33 @@ def _parse_bbox_html(raw: str) -> list[Block]:
     return out
 
 
+#: `<|LOC_160|>` — PaddleOCR-VL's grounding tokens. Eight of them follow each line of text: the
+#: four corners of its quadrilateral, clockwise from the top left, already 0-1000 normalised.
+_LOC = re.compile(r"<\|LOC_(\d+)\|>")
+
+
+def _parse_loc(raw: str) -> list[Block]:
+    """PaddleOCR-VL's format: a line of text, then the corners of the box around it.
+
+    It grounds line by line rather than block by block, so a table comes back a cell at a time.
+    That is more detail than the `<|det|>` models give, not less.
+    """
+    out: list[Block] = []
+    for line in raw.split("\n"):
+        parts = _LOC.split(line)             # text, number, text, number, … in one pass
+        content = "".join(parts[0::2]).strip()
+        points = [int(n) for n in parts[1::2]]
+        if not content:
+            continue
+        if len(points) < 4:                  # a line the model chose not to ground
+            out.append(_unboxed(content))
+            continue
+        xs, ys = points[0::2], points[1::2]
+        out.append(Block(kind_of(content, "text"),
+                         (min(xs), min(ys), max(xs), max(ys)), content))
+    return out
+
+
 def _parse_json(raw: str) -> list[Block]:
     """A JSON list of regions, the shape most layout-first OCR models return."""
     start, end = raw.find("["), raw.rfind("]")
@@ -348,7 +407,7 @@ def _parse_json(raw: str) -> list[Block]:
         content = item.get("text") or item.get("content") or item.get("caption") or ""
         label = str(item.get("category") or item.get("label") or item.get("type") or "text")
         if not box:
-            out.append(Block(label.lower(), (0, 0, 1000, 1000), str(content), boxed=False))
+            out.append(_unboxed(str(content), label.lower()))
             continue
         nums = [float(n) for n in box]
         if widest:                           # pixels, not the 0-1000 space this bench works in
@@ -373,8 +432,7 @@ def _parse_markdown(raw: str) -> list[Block]:
             continue
         label = "title" if chunk.startswith("#") else "table" if chunk.startswith("<table") \
             else "text"
-        out.append(Block(kind_of(chunk, label), (0, 0, 1000, 1000),
-                         chunk.lstrip("# ").strip(), boxed=False))
+        out.append(_unboxed(chunk.lstrip("# ").strip(), label))
     return out
 
 
@@ -414,7 +472,7 @@ def ocr_page(png: bytes, size: tuple[int, int], index: int,
     prompt = prompt or prompt_for(config.MODEL)
     result = PageResult(index=index, png=png, size=size)
     body = build_body(config.MODEL, prompt, [data_url(png)],
-                      dict(DEFAULT_KNOBS, max_tokens=max_tokens))
+                      dict(knobs_for(config.MODEL), max_tokens=max_tokens))
     req = request(config.BASE_URL, config.API_KEY, body)
     started = time.time()
     try:

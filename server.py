@@ -50,10 +50,6 @@ KNOBS: dict[str, type] = {
     "max_tokens": int, "top_k": int, "seed": int, "no_repeat_ngram_size": int,
 }
 
-#: What the page starts with, and what `ocr.ocr_page` uses — defined there, so the bench and the
-#: one-shot CLI cannot drift apart.
-DEFAULT_KNOBS = ocr.DEFAULT_KNOBS
-
 #: How many pages may be in flight at once. oMLX batches requests, so overlapping them is free
 #: throughput on a model that does not already saturate the GPU — measured, four pages of the
 #: deed: chandra 31.3s one at a time against 22.9s four at a time, Unlimited-OCR 22.5s against
@@ -180,7 +176,8 @@ class Handler(BaseHTTPRequestHandler):
             # knob defaults, and the block taxonomy the parser uses.
             self._json(200, {"base_url": config.BASE_URL, "api_key": config.API_KEY,
                              "model": config.MODEL, "prompt": config.PROMPT, "dpi": config.DPI,
-                             "knobs": DEFAULT_KNOBS, "colours": COLOURS, "junk": sorted(JUNK),
+                             "knobs": ocr.DEFAULT_KNOBS,
+                             "colours": COLOURS, "junk": sorted(JUNK),
                              "families": ocr.FAMILIES, "max_in_flight": MAX_IN_FLIGHT})
         elif url.path == "/api/samples":
             # Whatever `samples/make_samples.py` last drew, with its own labels. Drawn on
@@ -295,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
         mode = str(one("mode", "page"))
         in_flight = max(1, min(int(float(one("in_flight", 1))), MAX_IN_FLIGHT))
 
-        knobs = dict(DEFAULT_KNOBS)
+        knobs = ocr.knobs_for(model)
         for name, cast in KNOBS.items():
             raw = one(name, "")
             if raw != "":

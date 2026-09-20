@@ -58,10 +58,11 @@ the oMLX box sets no CORS headers and a browser would refuse the call.
 
 ## Any OCR model, not one
 
-The bench reads four output formats and takes whichever a model gives it (`ocr.parse`):
+The bench reads five output formats and takes whichever a model gives it (`ocr.parse`):
 
 | what the model returns | example | scored on |
 |---|---|---|
+| `TEXT<\|LOC_160\|><\|LOC_42\|>…` | PaddleOCR-VL | text **and** position |
 | `<\|det\|>LABEL [x0,y0,x1,y1]<\|/det\|>` markers | Unlimited-OCR and relatives | text **and** position |
 | `<div data-bbox="x0 y0 x1 y1" data-label="…">` | chandra | text **and** position |
 | a JSON list of `{bbox, category, text}` | dots.ocr, PaddleOCR-VL, most layout-first models | text **and** position |
@@ -116,28 +117,92 @@ should mark a region there, not read it), text **invented** (matched nothing on 
 no real person, firm, school or authority. That is not only a licence question: a drawn page is
 the only kind whose answer key you can actually have.
 
-## Two models, measured head to head
+## Three models, measured head to head
 
-One request per page, 150 dpi, the drawn sample pack, scored against its answer key.
-`Unlimited-OCR-bf16` with `frequency_penalty: 0.8` and `Multi page parsing.`;
-`chandra-ocr-2-8bit-mlx` with `Convert this page to markdown.`
+One request per page, 150 dpi, the drawn sample pack, scored against its answer key. Each model
+with the prompt and sampling defaults the bench picks for it (`ocr.FAMILIES`).
 
-| sample | Unlimited text | chandra text | Unlimited time | chandra time |
+**Text accuracy:**
+
+| sample | PaddleOCR-VL-1.6 | Unlimited-OCR-bf16 | chandra-ocr-2-8bit |
+|---|---|---|---|
+| `commercial_invoice.pdf` | **99.6%** | 61.7% | 91.2% |
+| `gov_permit.pdf` | **99.5%** | 88.7% | 89.8% |
+| `school_transcript.pdf` | **99.3%** | 72.7% | 82.6% |
+| `scan_permit.png` | **99.2%** | 84.8% | 89.8% |
+| `legal_deed.pdf` | **97.6%** | 74.2% | 72.6% |
+| `scan_notice_zh.png` | **97.3%** | 86.6% | 80.1% |
+| `notice_zh.pdf` | **97.1%** | 86.3% | 79.8% |
+
+PaddleOCR-VL scored **100% position on all seven**, and read every line of three of them.
+
+**Seconds per document, same run:**
+
+| sample | PaddleOCR-VL | Unlimited-OCR | chandra |
+|---|---|---|---|
+| `gov_permit.pdf` | **3.7 s** | 4.8 s | 20.3 s |
+| `commercial_invoice.pdf` | **3.1 s** | 10.0 s | 18.3 s |
+| `notice_zh.pdf` | 2.1 s | **1.9 s** | 10.9 s |
+| `legal_deed.pdf` (3 pages) | **9.5 s** | 21.3 s | 27.9 s |
+
+**PaddleOCR-VL-1.6 wins all seven samples and is the fastest on all but one, at 0.9B
+parameters.** It read a skewed, noisy phone photo of the permit perfectly — 63 lines of 63 — and
+the invoice perfectly too, the page the other two find hardest. It grounds *per line* rather than
+per block, so a table comes back cell by cell: more detail than the others give, not less.
+
+The recommendation is not close: **use PaddleOCR-VL.** It is a fraction of the size, the fastest,
+and the most accurate on every sample including both Chinese ones. Keep Unlimited-OCR only if its
+32K-context multi-page story ever starts working.
+
+### Use the prompt the model documents — it was worth 31 points
+
+PaddleOCR-VL is the recognition half of a two-stage pipeline: a separate layout model
+(PP-DocLayoutV2) crops the page, and each crop arrives with its task named. Its
+[model card](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6) documents six prompts —
+`OCR:`, `Spotting:`, `Table Recognition:`, `Formula Recognition:`, `Chart Recognition:`,
+`Seal Recognition:`. Given a whole page rather than a crop, `Spotting:` is the one that reads all
+of it and grounds every line.
+
+Measured on the permit, one page, all six plus the two that were guessed at:
+
+| prompt | time | grounded | text | lines found |
 |---|---|---|---|---|
-| `commercial_invoice.pdf` | 61.6% | **91.2%** | **10.0 s** | 18.3 s |
-| `gov_permit.pdf` | 88.7% | **89.8%** | **5.3 s** | 20.3 s |
-| `scan_permit.png` | 84.8% | **89.8%** | **9.5 s** | 21.7 s |
-| `school_transcript.pdf` | 72.7% | **82.6%** | **4.4 s** | 19.0 s |
-| `legal_deed.pdf` | **74.2%** | 72.6% | **21.5 s** | 27.9 s |
-| `notice_zh.pdf` | **86.3%** | 79.8% | **1.9 s** | 10.9 s |
-| `scan_notice_zh.png` | **86.6%** | 80.1% | **1.9 s** | 10.9 s |
+| **`Spotting:`** | 3.8 s | **yes** | **99.5%** | **63/63** |
+| `Multi page parsing.` (a guess) | 4.2 s | yes | 99.2% | 63/63 |
+| `OCR:` | 6.3 s | no | 80.1% | 32/63 |
+| `Seal Recognition:` | 2.4 s | no | 70.8% | 20/63 |
+| `Chart Recognition:` | 1.8 s | no | 19.2% | 0/63 |
+| `Table Recognition:` | 2.3 s | no | 0.0% | 0/63 |
+| `Formula Recognition:` | 3.6 s | no | 0.0% | 0/63 |
 
-Position was 100% for both on every sample but one (Unlimited-OCR, 84.2% on the invoice).
+And across the pack, `Spotting:` against the best guess: the school transcript goes from **68.4%
+to 99.3%** and the invoice from 98.7% to **99.6% with every line found**. Every number in the
+comparison above uses it.
 
-**Read it like this.** chandra is better on English business and government layouts and much better
-on the invoice — 91.2% against 61.6%, and it marked all five graphics where Unlimited-OCR marked
-one. Unlimited-OCR is better on Traditional Chinese and is **three to four times faster on every
-single sample**. Neither is a clean winner, which is the entire argument for having a bench.
+The lesson generalises, and it is why the prompt presets are grouped by model: for an OCR model
+the prompt is not phrasing, it is a mode switch.
+
+### The knob that belongs to the model, not to the bench
+
+`frequency_penalty: 0.8` is what stops Unlimited-OCR repeating a line to the token cap, and it is
+measured to cost that model nothing. Applied to PaddleOCR-VL it takes the school transcript from
+**68.4% down to 56.0%**.
+
+That is the whole argument for per-model defaults, so the bench now carries them in
+`ocr.FAMILIES` and moves the sampling panel when you switch models. It was worth finding: the
+first PaddleOCR-VL numbers this bench produced were wrong because it was still applying another
+model's medicine.
+
+### What is wrong with `PaddleOCR-VL-1.6`
+
+1. **The prompt is a mode switch, and the wrong one fails quietly.** `Table Recognition:` on a
+   page that is mostly prose returns something confident and entirely wrong — 0% against the
+   answer key, with no error and no warning. There is nothing in the response to tell you the
+   mode was wrong; only an answer key catches it.
+2. **It answers in a fifth format** — `TEXT<|LOC_160|><|LOC_42|>…`, the words followed by the
+   eight numbers of the surrounding quadrilateral, 0-1000 normalised. The bench reads it now.
+3. **It is built to be fed crops, not pages.** Using it whole-page at all is off-label; a real
+   pipeline would run PP-DocLayoutV2 first. That it scores 97–99% anyway is the surprise.
 
 ### What is wrong with `Unlimited-OCR`
 
@@ -225,12 +290,12 @@ Two things left to try, neither tested here:
 
 ## Models worth trying next
 
-None of these has been run on this bench yet — that is the point of the pivot. Ordered by what
-the public benchmarks say, with the caveat that a leaderboard is not your documents:
+PaddleOCR-VL has now been run and is above. The rest have not, and a leaderboard is not your
+documents:
 
 | model | size | why | on oMLX |
 |---|---|---|---|
-| [**PaddleOCR-VL**](https://huggingface.co/OpenGryd/PaddleOCR-VL-1.6-MLX-16bit) | 0.9B | top of OmniDocBench v1.6 (96.34) and by far the smallest thing near the top; 109 languages | MLX conversions exist ([also here](https://huggingface.co/gamhtoi/PaddleOCR-VL-MLX)) |
+| [**PaddleOCR-VL**](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6) | 0.9B | **measured here — wins six of seven samples and is the fastest.** Top of OmniDocBench v1.6 (96.34); 109 languages | **runs on oMLX** |
 | [**Qianfan-OCR**](https://huggingface.co/jason1966/Qianfan-OCR-MLX-4bit) | 4B | Baidu's newer one; top of OmniDocBench v1.5 (93.12) and OlmOCR Bench (79.8) | 4-bit MLX conversion published |
 | **MinerU2.5-Pro** | — | second on OmniDocBench v1.6 (95.75) | look for a conversion |
 | [**dots.ocr / dots.mocr**](https://huggingface.co/blog/ocr-open-models) | 3B | layout-first, emits structured JSON — the format this bench scores best | look for a conversion |

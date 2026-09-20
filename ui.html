@@ -337,12 +337,12 @@ pre.out .det{color:var(--muted);opacity:.75}
       <p>Fixes the random draw, so a run with temperature above 0 can be repeated exactly.
         <span class="try">Only useful when temperature is not 0.</span></p>
 
-      <h3><code>frequency_penalty</code> <b>— the one that matters</b></h3>
-      <p>Pushes down words the model has already used a lot. It is the cure for the failure that
-        costs the most here: on a page with little text these models repeat one line until they
-        hit the cap.
-        <span class="try">0.8 ends that loop in 1.5 s instead of 29 s, and on a dense page the
-          answer is byte-identical to using nothing at all. Measured.</span></p>
+      <h3><code>frequency_penalty</code> <b>— belongs to the model, not to you</b></h3>
+      <p>Pushes down words the model has already used a lot. It is the cure for Unlimited-OCR's
+        worst failure: on a page with little text it repeats one line until it hits the cap.
+        <span class="try">0.8 ends that loop in 1.5 s instead of 29 s and costs that model
+          nothing — but on PaddleOCR-VL the same 0.8 takes the school transcript from 68.4% down
+          to 56.0%. The bench now sets it per model, so switching models moves it for you.</span></p>
 
       <h3><code>presence_penalty</code></h3>
       <p>Pushes down any word used even once, regardless of how often. Blunter than the one
@@ -462,7 +462,7 @@ fetch("/api/defaults").then(r => r.json()).then(d => {
   COLOURS = d.colours || {}; JUNK = new Set(d.junk || []); FAMILIES = d.families || [];
   $("#in_flight").max = d.max_in_flight || 8;
   fillPresets();
-  Object.entries(d.knobs || {}).forEach(([k, v]) => { if ($("#" + k)) $("#" + k).value = v; });
+  BASE_KNOBS = d.knobs || {}; applyKnobs($("#model").value);
   test();
 });
 
@@ -531,9 +531,24 @@ $("#preset").onchange = e => {
   e.target.value = "";
   modelNote();
 };
+/** The sampling defaults for a model: the shared ones, plus whatever its family needs.
+ *  `frequency_penalty` is Unlimited-OCR's cure and PaddleOCR-VL's problem, so it belongs to the
+ *  model. Whatever the user typed stays put; a box still showing a default follows the model. */
+let BASE_KNOBS = {}, SHOWN = {};
+function applyKnobs(id){
+  const want = {...BASE_KNOBS, ...(family(id).knobs || {})};
+  new Set([...Object.keys(want), ...Object.keys(SHOWN)]).forEach(k => {
+    const input = $("#" + k);
+    if (!input || (input.value !== "" && input.value !== String(SHOWN[k]))) return;  // typed
+    input.value = k in want ? want[k] : "";
+  });
+  SHOWN = want;
+}
+
 function modelNote(){
   const id = $("#model").value;
   const m = MODELS.find(x => x.id === id) || {};
+  if (FAMILIES.length) applyKnobs(id);
   const ctx = m.max_model_len ? `context window ${m.max_model_len.toLocaleString()} tokens. ` : "";
   const want = suggested(id);
   let note = ctx;
