@@ -449,6 +449,13 @@ The model already confuses character pairs at **full** precision (§8), and quan
 the pressure that makes rare-glyph choices worse. If you want to know rather than guess, the bench
 now answers it: same sample, same prompt, swap the model, read the bars.
 
+## Taking PaddleOCR-VL somewhere else
+
+`docs/PADDLEOCR-VL-HANDOFF.md` is a self-contained brief for another project: the documented
+prompts, the exact output format with its edge cases, the sampling settings that matter, how to
+render the boxes as HTML, and the failure modes to design around. It starts by telling the reader
+to verify all of it against the model card and the PaddleOCR repo first.
+
 ## The oMLX bugs
 
 `OMLX-BUG-REPORT.md` holds two ready-to-post issues for <https://github.com/jundot/omlx/issues>,
